@@ -265,26 +265,21 @@ DECLARE
     v_profile_rec RECORD;
     v_link_rec RECORD;
 BEGIN
-    -- 1. Verify caller is authenticated
     IF auth.uid() IS NULL THEN
         RAISE EXCEPTION 'Not authenticated';
     END IF;
 
-    -- 2. Verify patient exists
     SELECT * INTO v_patient_rec FROM public.patients WHERE id = p_patient_id;
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Invalid Patient Connection Code. Patient not found.';
     END IF;
 
-    -- 3. Get patient profile
     SELECT * INTO v_profile_rec FROM public.profiles WHERE id = v_patient_rec.profile_id;
 
-    -- 4. Prevent patient from linking to themselves as caretaker
     IF v_patient_rec.profile_id = auth.uid() THEN
         RAISE EXCEPTION 'You cannot link your own patient account as a caretaker.';
     END IF;
 
-    -- 5. Insert or update relationship
     INSERT INTO public.caretaker_patient (caretaker_id, patient_id, relationship)
     VALUES (auth.uid(), p_patient_id, COALESCE(p_relationship, 'Caregiver'))
     ON CONFLICT (caretaker_id, patient_id) DO UPDATE SET
@@ -322,7 +317,7 @@ WHERE p.role = 'patient' AND pat.id IS NULL
 ON CONFLICT (profile_id) DO NOTHING;
 
 -- ==============================================================================
--- ROW LEVEL SECURITY POLICIES
+-- ROW LEVEL SECURITY POLICIES (DATABASE TABLES)
 -- ==============================================================================
 
 -- Enable RLS on all tables
@@ -503,7 +498,7 @@ CREATE POLICY "Documents Delete Policy"
     ON public.documents FOR DELETE
     USING (public.has_patient_access(patient_id));
 
--- 10. Gallery_Images Policies
+-- 10. Gallery_Images Database Policies
 DROP POLICY IF EXISTS "Gallery Images Select Policy" ON public.gallery_images;
 DROP POLICY IF EXISTS "Gallery Images Insert Policy" ON public.gallery_images;
 DROP POLICY IF EXISTS "Gallery Images Delete Policy" ON public.gallery_images;
@@ -533,4 +528,64 @@ BEGIN
   ) THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.locations;
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'gallery_images'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.gallery_images;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'memory_sessions'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.memory_sessions;
+  END IF;
 END $$;
+
+-- ==============================================================================
+-- SUPABASE STORAGE BUCKET & STORAGE RLS POLICIES (GALLERY)
+-- ==============================================================================
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('gallery', 'gallery', false)
+ON CONFLICT (id) DO NOTHING;
+
+-- Clean up any existing policies on storage.objects for gallery
+DROP POLICY IF EXISTS "Patients and Caretakers can read gallery photos" ON storage.objects;
+DROP POLICY IF EXISTS "Caretakers and Patients can upload gallery photos" ON storage.objects;
+DROP POLICY IF EXISTS "Caretakers and Patients can delete gallery photos" ON storage.objects;
+
+-- SELECT Policy: Access allowed if authenticated user has access to patient_id in folder path
+CREATE POLICY "Patients and Caretakers can read gallery photos"
+ON storage.objects FOR SELECT
+TO authenticated
+USING (
+    bucket_id = 'gallery'
+    AND split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    AND public.has_patient_access((split_part(name, '/', 1))::uuid)
+);
+
+-- INSERT Policy: Upload allowed if authenticated user has access to patient_id in folder path
+CREATE POLICY "Caretakers and Patients can upload gallery photos"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+    bucket_id = 'gallery'
+    AND split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    AND public.has_patient_access((split_part(name, '/', 1))::uuid)
+);
+
+-- DELETE Policy: Delete allowed if authenticated user has access to patient_id in folder path
+CREATE POLICY "Caretakers and Patients can delete gallery photos"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (
+    bucket_id = 'gallery'
+    AND split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    AND public.has_patient_access((split_part(name, '/', 1))::uuid)
+);

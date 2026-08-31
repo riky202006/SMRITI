@@ -18,9 +18,11 @@ export default function GameResultPage() {
     rounds: [],
   };
 
+  const total = report.totalRounds || 5;
+
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-      <TopBar title="5-Round Challenge Complete" />
+      <TopBar title={`${total}-Round Challenge Complete`} />
 
       <div style={{ flex: 1, padding: 'var(--gutter)', overflowY: 'auto', textAlign: 'center' }}>
         <Card style={{ padding: 24, marginBottom: 16 }}>
@@ -29,7 +31,7 @@ export default function GameResultPage() {
           </div>
           <h1 className="headline-md" style={{ marginBottom: 4 }}>Great Job! 🎉</h1>
           <p className="body-md" style={{ color: 'var(--outline)', marginBottom: 16 }}>
-            You completed all 5 rounds of the memory challenge!
+            You completed all {total} rounds of the memory challenge!
           </p>
 
           <div style={{ display: 'flex', justifyContent: 'space-around', padding: '12px 0', backgroundColor: 'var(--surface-container-low)', borderRadius: 'var(--radius-md)', marginBottom: 16 }}>
@@ -38,7 +40,7 @@ export default function GameResultPage() {
               <p className="body-md" style={{ color: 'var(--outline)', fontSize: 14 }}>Accuracy</p>
             </div>
             <div>
-              <p className="headline-md" style={{ color: 'var(--secondary)' }}>{report.correctCount}/5</p>
+              <p className="headline-md" style={{ color: 'var(--secondary)' }}>{report.correctCount}/{total}</p>
               <p className="body-md" style={{ color: 'var(--outline)', fontSize: 14 }}>Correct</p>
             </div>
             <div>
@@ -50,14 +52,16 @@ export default function GameResultPage() {
           {/* Caretaker Report Confirmation Badge */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 12, borderRadius: 'var(--radius-pill)', backgroundColor: '#e8f5e9', color: '#2e7d32', fontWeight: 600, fontSize: 14 }}>
             <IconHeart size={20} />
-            Report & Analytics sent to Caretaker!
+            Report &amp; Analytics sent to Caretaker!
           </div>
         </Card>
 
         {/* Round Breakdown */}
         {report.rounds && report.rounds.length > 0 && (
-          <Card style={{ textAlignment: 'left', marginBottom: 20 }}>
-            <h3 className="label-lg" style={{ marginBottom: 12, textAlign: 'left' }}>5-ROUND PERFORMANCE</h3>
+          <Card style={{ textAlign: 'left', marginBottom: 20 }}>
+            <h3 className="label-lg" style={{ marginBottom: 12, textAlign: 'left' }}>
+              {total}-ROUND PERFORMANCE
+            </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {report.rounds.map((r, i) => (
                 <div
@@ -84,7 +88,7 @@ export default function GameResultPage() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Button variant="primary" onClick={() => navigate('/patient/games/countdown')}>
-            Play 5 New Rounds
+            Play New Rounds
           </Button>
           <Button variant="outline" onClick={() => navigate('/patient/home')}>
             Back to Home

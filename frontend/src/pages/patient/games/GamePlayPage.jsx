@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
+import { getPatientByProfileId } from '@/services/patients';
+import { saveMemorySession } from '@/services/analytics';
 import { DeviceFrame } from '@/components/layout/DeviceFrame';
 import { useGameLogic } from '@/hooks/useGameLogic';
 import './games.css';
@@ -8,10 +11,11 @@ import './games.css';
 export default function GamePlayPage() {
   const navigate = useNavigate();
   const { appData, setAppData, showToast } = useApp();
+  const { user, patientRecord } = useAuth();
   const [selected, setSelected] = useState(null);
 
   const onUpdateStats = useCallback(
-    ({ correct, gameComplete, sessionCorrect: sc }) => {
+    async ({ correct, gameComplete, sessionCorrect: sc }) => {
       setAppData((prev) => {
         const stats = { ...(prev.stats || { games: 0, score: 0, correct: 0, incorrect: 0 }) };
         if (correct === true) {
@@ -26,8 +30,30 @@ export default function GamePlayPage() {
         }
         return { ...prev, stats };
       });
+
+      if (gameComplete) {
+        let pId = patientRecord?.id;
+        if (!pId && user?.id) {
+          const { data: pRec } = await getPatientByProfileId(user.id);
+          pId = pRec?.id;
+        }
+
+        if (pId) {
+          const total = 10;
+          const correctNum = sc || 0;
+          const acc = Math.round((correctNum / total) * 100);
+          await saveMemorySession({
+            patientId: pId,
+            totalRounds: total,
+            correctCount: correctNum,
+            accuracy: acc,
+            score: correctNum * 10,
+            summary: `Completed 10-round memory challenge (${correctNum}/10 correct, ${acc}% accuracy).`,
+          });
+        }
+      }
     },
-    [setAppData],
+    [setAppData, patientRecord?.id, user?.id],
   );
 
   const game = useGameLogic(appData.images, onUpdateStats);

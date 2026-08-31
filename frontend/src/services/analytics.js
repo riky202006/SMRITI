@@ -1,9 +1,62 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 
 /**
- * Fetch recent memory/cognitive game sessions for a patient.
+ * Record a completed cognitive/memory game session to Supabase.
  */
-export async function getMemorySessions(patientId, limit = 20) {
+export async function saveMemorySession({
+  patientId,
+  totalRounds = 5,
+  correctCount = 0,
+  accuracy = null,
+  score = null,
+  summary = '',
+}) {
+  if (!isSupabaseConfigured || !patientId) {
+    return { data: null, error: new Error('Supabase is not configured or patient ID is missing.') };
+  }
+
+  const safeTotalRounds = Math.max(0, parseInt(totalRounds, 10) || 0);
+  const safeCorrectCount = Math.max(0, Math.min(safeTotalRounds, parseInt(correctCount, 10) || 0));
+
+  // Compute accuracy consistently: (correctCount / totalRounds) * 100
+  const computedAccuracy =
+    accuracy !== null && !isNaN(accuracy)
+      ? Number(Number(accuracy).toFixed(2))
+      : safeTotalRounds > 0
+      ? Number(((safeCorrectCount / safeTotalRounds) * 100).toFixed(2))
+      : 0;
+
+  const computedScore =
+    score !== null && !isNaN(score)
+      ? parseInt(score, 10)
+      : safeCorrectCount * 10;
+
+  const sessionSummary =
+    summary ||
+    `Recognized ${safeCorrectCount} of ${safeTotalRounds} family members correctly (${computedAccuracy}% accuracy).`;
+
+  const { data, error } = await supabase
+    .from('memory_sessions')
+    .insert([
+      {
+        patient_id: patientId,
+        total_rounds: safeTotalRounds,
+        correct_count: safeCorrectCount,
+        accuracy: computedAccuracy,
+        score: computedScore,
+        summary: sessionSummary,
+      },
+    ])
+    .select()
+    .single();
+
+  return { data, error };
+}
+
+/**
+ * Fetch recent memory/cognitive game sessions for a patient from Supabase.
+ */
+export async function getMemorySessions(patientId, limit = 50) {
   if (!isSupabaseConfigured || !patientId) return { data: [], error: null };
 
   const { data, error } = await supabase
@@ -17,42 +70,14 @@ export async function getMemorySessions(patientId, limit = 20) {
 }
 
 /**
- * Record a completed memory game session.
- */
-export async function saveMemorySession({
-  patientId,
-  totalRounds = 5,
-  correctCount = 0,
-  accuracy = 0,
-  score = 0,
-  summary = '',
-}) {
-  if (!isSupabaseConfigured || !patientId) return { data: null, error: null };
-
-  const { data, error } = await supabase
-    .from('memory_sessions')
-    .insert([
-      {
-        patient_id: patientId,
-        total_rounds: totalRounds,
-        correct_count: correctCount,
-        accuracy,
-        score,
-        summary,
-      },
-    ])
-    .select()
-    .single();
-
-  return { data, error };
-}
-
-/**
- * Compute aggregate statistics for patient performance.
+ * Compute aggregate statistics for patient cognitive performance.
  */
 export async function getPatientStats(patientId) {
   if (!isSupabaseConfigured || !patientId) {
-    return { data: { totalSessions: 0, avgAccuracy: 0, totalScore: 0 }, error: null };
+    return {
+      data: { totalSessions: 0, avgAccuracy: 0, totalScore: 0, totalCorrect: 0 },
+      error: null,
+    };
   }
 
   const { data, error } = await supabase
@@ -61,13 +86,17 @@ export async function getPatientStats(patientId) {
     .eq('patient_id', patientId);
 
   if (error || !data || data.length === 0) {
-    return { data: { totalSessions: 0, avgAccuracy: 0, totalScore: 0 }, error };
+    return {
+      data: { totalSessions: 0, avgAccuracy: 0, totalScore: 0, totalCorrect: 0 },
+      error,
+    };
   }
 
   const totalSessions = data.length;
-  const totalScore = data.reduce((sum, s) => sum + (s.score || 0), 0);
+  const totalScore = data.reduce((sum, s) => sum + (Number(s.score) || 0), 0);
+  const totalCorrect = data.reduce((sum, s) => sum + (Number(s.correct_count) || 0), 0);
   const avgAccuracy = Math.round(
-    data.reduce((sum, s) => sum + Number(s.accuracy || 0), 0) / totalSessions
+    data.reduce((sum, s) => sum + (Number(s.accuracy) || 0), 0) / totalSessions
   );
 
   return {
@@ -75,7 +104,35 @@ export async function getPatientStats(patientId) {
       totalSessions,
       avgAccuracy,
       totalScore,
+      totalCorrect,
     },
     error: null,
+  };
+}
+
+/**
+ * Real-time subscription to cognitive game session logs for a patient.
+ */
+export function subscribeToMemorySessions(patientId, callback) {
+  if (!isSupabaseConfigured || !patientId) return { unsubscribe: () => {} };
+
+  const channel = supabase
+    .channel(`memory_sessions:${patientId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'memory_sessions',
+        filter: `patient_id=eq.${patientId}`,
+      },
+      (payload) => callback(payload)
+    )
+    .subscribe();
+
+  return {
+    unsubscribe: () => {
+      supabase.removeChannel(channel);
+    },
   };
 }
