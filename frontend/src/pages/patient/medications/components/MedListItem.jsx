@@ -3,11 +3,16 @@ import Button from '@/components/ui/Button';
 import { IconMedication, IconCheck } from '@/components/icons';
 import { formatTime } from '@/utils/formatters';
 
-export default function MedListItem({ medicine, onToggle }) {
-  const dateStr = new Date().toISOString().split('T')[0];
-  const primaryTime = medicine.times ? medicine.times[0] : '08:00';
-  const histKey = `${dateStr}_${primaryTime}`;
-  const isTaken = medicine.history ? !!medicine.history[histKey] : false;
+export default function MedListItem({ medicine, isTaken, takenAt, onToggle, toggling }) {
+  const primaryTime = medicine.times && medicine.times.length > 0 ? medicine.times[0] : '08:00';
+
+  let takenTimeStr = '';
+  if (isTaken && takenAt) {
+    try {
+      const d = new Date(takenAt);
+      takenTimeStr = ` at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    } catch {}
+  }
 
   return (
     <Card style={{ marginBottom: 16 }}>
@@ -19,14 +24,14 @@ export default function MedListItem({ medicine, onToggle }) {
           <div>
             <h3 className="headline-sm">{medicine.name}</h3>
             <p className="body-md" style={{ color: 'var(--outline)' }}>
-              {medicine.dosage} • {medicine.type}
+              {medicine.dosage} • {medicine.type || 'Tablet'}
             </p>
           </div>
         </div>
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-        {(medicine.times || []).map((t) => (
+        {(medicine.times || [primaryTime]).map((t) => (
           <span
             key={t}
             style={{
@@ -44,12 +49,16 @@ export default function MedListItem({ medicine, onToggle }) {
 
       <Button
         variant={isTaken ? 'secondary' : 'primary'}
-        onClick={() => onToggle && onToggle(medicine.id, primaryTime, dateStr)}
+        onClick={() => onToggle && onToggle(medicine.id, primaryTime, !isTaken)}
+        disabled={toggling}
+        style={{ width: '100%' }}
       >
-        {isTaken ? (
-          <>
-            <IconCheck size={20} /> Dose Marked as Taken
-          </>
+        {toggling ? (
+          'Updating Cloud Log...'
+        ) : isTaken ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <IconCheck size={20} /> Dose Marked as Taken{takenTimeStr}
+          </span>
         ) : (
           'Mark as Taken'
         )}

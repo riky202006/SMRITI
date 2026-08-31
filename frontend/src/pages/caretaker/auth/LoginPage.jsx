@@ -8,31 +8,28 @@ import { useAppData } from '@/hooks/useAppData';
 export default function LoginPage() {
   const navigate = useNavigate();
   const { login, signup } = useAuth();
-  const { showToast, updatePatientName } = useAppData();
+  const { showToast, updateCaretakerName } = useAppData();
 
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
-  const [pin, setPin] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isRateLimited, setIsRateLimited] = useState(false);
 
-  // Transform 4-digit PIN to standard Supabase auth password (min 6 chars)
-  const pinToPassword = (p) => `${p}#smriti2026`;
-
   const formatErrorMessage = (err) => {
     if (!err) return '';
     if (typeof err === 'string') return err;
-    
-    // Check for rate limit or existing user
+
     if (err.code === 'over_email_send_rate_limit' || err.status === 429) {
       setIsRateLimited(true);
-      return 'Email rate limit reached on Supabase [429 over_email_send_rate_limit]. If you already registered this email, please click "Sign In" below. Otherwise, please wait a short while for the limit to reset.';
+      return 'Email rate limit reached on Supabase [429 over_email_send_rate_limit]. If you already registered this account, please click "Sign In" below. Otherwise, please wait a short while for the limit to reset.';
     }
 
     if (err.isExistingUser || err.code === 'user_already_exists') {
-      return 'This account is already registered. Please sign in below using your 4-digit PIN.';
+      return 'This account is already registered. Please sign in below.';
     }
 
     const parts = [];
@@ -47,52 +44,47 @@ export default function LoginPage() {
     setErrorMsg('');
     setIsRateLimited(false);
 
-    if (!pin || pin.length < 4) {
-      setErrorMsg('Please enter a 4-digit security PIN.');
-      return;
-    }
-
     const trimmedEmail = email.trim();
-    if (!trimmedEmail) {
-      setErrorMsg('Please enter your email address.');
+    if (!trimmedEmail || !password) {
+      setErrorMsg('Please enter both email and password.');
       return;
     }
 
-    const authEmail = trimmedEmail.includes('@')
-      ? trimmedEmail
-      : `${trimmedEmail.replace(/[^a-zA-Z0-9]/g, '')}@patient.smriti.app`;
-
-    const authPassword = pinToPassword(pin);
+    if (password.length < 6) {
+      setErrorMsg('Password must be at least 6 characters.');
+      return;
+    }
 
     setLoading(true);
 
     try {
       if (isSignUp) {
-        const patientName = fullName.trim() || 'Patient';
+        const caretakerName = fullName.trim() || 'Caretaker';
         const { user, error } = await signup({
-          email: authEmail,
-          password: authPassword,
-          fullName: patientName,
-          role: 'patient',
+          email: trimmedEmail,
+          password,
+          fullName: caretakerName,
+          role: 'caretaker',
+          phone: phone.trim(),
         });
 
         if (error) {
           setErrorMsg(formatErrorMessage(error));
           if (error.isExistingUser) {
-            setIsSignUp(false); // auto switch to sign in for convenience
+            setIsSignUp(false);
           }
           return;
         }
 
         if (user) {
-          updatePatientName(patientName);
-          showToast('Account created successfully!');
-          navigate('/patient/home', { replace: true });
+          updateCaretakerName(caretakerName);
+          showToast('Caretaker account created successfully!');
+          navigate('/caretaker/dashboard', { replace: true });
         }
       } else {
         const { user, profile, error } = await login({
-          email: authEmail,
-          password: authPassword,
+          email: trimmedEmail,
+          password,
         });
 
         if (error) {
@@ -102,10 +94,10 @@ export default function LoginPage() {
 
         if (user) {
           if (profile?.full_name) {
-            updatePatientName(profile.full_name);
+            updateCaretakerName(profile.full_name);
           }
-          showToast('Welcome back!');
-          navigate('/patient/home', { replace: true });
+          showToast('Welcome to Caretaker Dashboard');
+          navigate('/caretaker/dashboard', { replace: true });
         }
       }
     } catch (err) {
@@ -119,12 +111,12 @@ export default function LoginPage() {
     <div style={{ padding: 'var(--gutter)', display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center' }}>
       <Card>
         <h1 className="headline-md" style={{ marginBottom: 8 }}>
-          {isSignUp ? 'Create Patient Profile' : 'Patient Login'}
+          {isSignUp ? 'Caretaker Registration' : 'Caretaker Portal Login'}
         </h1>
         <p className="body-md" style={{ color: 'var(--outline)', marginBottom: 20 }}>
           {isSignUp
-            ? 'Set up your email and 4-digit PIN for safe access.'
-            : 'Enter your email and 4-digit security PIN.'}
+            ? 'Create an account to monitor patients, medications & safety.'
+            : 'Sign in to access patient analytics, live tracking & schedules.'}
         </p>
 
         {errorMsg && (
@@ -147,33 +139,53 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit}>
           {isSignUp && (
-            <div style={{ marginBottom: 16 }}>
-              <label className="label-lg" style={{ display: 'block', marginBottom: 6 }}>Full Name</label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="e.g. Ravi Kumar"
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  borderRadius: 'var(--radius-md)',
-                  border: '2px solid var(--outline-variant)',
-                  fontSize: '16px',
-                  outline: 'none',
-                }}
-                required
-              />
-            </div>
+            <>
+              <div style={{ marginBottom: 16 }}>
+                <label className="label-lg" style={{ display: 'block', marginBottom: 6 }}>Full Name</label>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="e.g. Anita Sharma"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: 'var(--radius-md)',
+                    border: '2px solid var(--outline-variant)',
+                    fontSize: '16px',
+                    outline: 'none',
+                  }}
+                  required
+                />
+              </div>
+
+              <div style={{ marginBottom: 16 }}>
+                <label className="label-lg" style={{ display: 'block', marginBottom: 6 }}>Phone Number</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="e.g. +91 98765 43210"
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    borderRadius: 'var(--radius-md)',
+                    border: '2px solid var(--outline-variant)',
+                    fontSize: '16px',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            </>
           )}
 
           <div style={{ marginBottom: 16 }}>
             <label className="label-lg" style={{ display: 'block', marginBottom: 6 }}>Email Address</label>
             <input
-              type="text"
+              type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="e.g. patient@example.com"
+              placeholder="e.g. caretaker@example.com"
               autoComplete="email"
               style={{
                 width: '100%',
@@ -188,21 +200,18 @@ export default function LoginPage() {
           </div>
 
           <div style={{ marginBottom: 20 }}>
-            <label className="label-lg" style={{ display: 'block', marginBottom: 6 }}>4-Digit PIN</label>
+            <label className="label-lg" style={{ display: 'block', marginBottom: 6 }}>Password</label>
             <input
               type="password"
-              maxLength={4}
-              value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, ''))}
-              placeholder="• • • •"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Min. 6 characters"
               style={{
                 width: '100%',
-                padding: '12px',
-                textAlign: 'center',
-                fontSize: '28px',
-                letterSpacing: '10px',
+                padding: '12px 16px',
                 borderRadius: 'var(--radius-md)',
                 border: '2px solid var(--outline-variant)',
+                fontSize: '16px',
                 outline: 'none',
               }}
               required
@@ -210,7 +219,7 @@ export default function LoginPage() {
           </div>
 
           <Button type="submit" variant="primary" disabled={loading} style={{ width: '100%', marginBottom: 12 }}>
-            {loading ? 'Authenticating...' : isSignUp ? 'Create Patient Account' : 'Sign In with PIN'}
+            {loading ? 'Authenticating...' : isSignUp ? 'Create Caretaker Account' : 'Sign In'}
           </Button>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
@@ -231,7 +240,7 @@ export default function LoginPage() {
                 padding: 4,
               }}
             >
-              {isSignUp ? 'Already registered? Sign In' : 'New patient? Register here'}
+              {isSignUp ? 'Already registered? Sign In' : 'New caretaker? Register here'}
             </button>
 
             <button

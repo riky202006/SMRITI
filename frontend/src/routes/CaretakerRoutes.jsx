@@ -1,6 +1,9 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+
 import RoleSelectPage from '@/pages/caretaker/auth/RoleSelectPage';
 import NameSetupPage from '@/pages/caretaker/auth/NameSetupPage';
+import LoginPage from '@/pages/caretaker/auth/LoginPage';
 
 import DashboardPage from '@/pages/caretaker/dashboard/DashboardPage';
 import PatientProfilePage from '@/pages/caretaker/patient-profile/PatientProfilePage';
@@ -18,21 +21,108 @@ import AccountPage from '@/pages/caretaker/account/AccountPage';
 export default function CaretakerRoutes() {
   return (
     <Routes>
+      {/* Public Auth Routes */}
       <Route path="auth/role-select" element={<RoleSelectPage />} />
+      <Route path="auth/login" element={<LoginPage />} />
       <Route path="auth/name-setup" element={<NameSetupPage />} />
 
-      <Route path="dashboard" element={<DashboardPage />} />
-      <Route path="patient-profile" element={<PatientProfilePage />} />
-      <Route path="medications" element={<MedicinePage />} />
-      <Route path="visits" element={<VisitsPage />} />
-      <Route path="analytics" element={<AnalyticsPage />} />
-      <Route path="gallery" element={<GalleryPage />} />
-      <Route path="gallery/add" element={<AddImagePage />} />
-      <Route path="memory" element={<MemorySetupPage />} />
-      <Route path="documents" element={<DocsSetupPage />} />
-      <Route path="sos" element={<SosPage />} />
-      <Route path="live-tracking" element={<MapPage />} />
-      <Route path="account" element={<AccountPage />} />
+      {/* Protected Caretaker Routes */}
+      <Route
+        path="dashboard"
+        element={
+          <ProtectedRoute allowedRole="caretaker">
+            <DashboardPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="patient-profile"
+        element={
+          <ProtectedRoute allowedRole="caretaker">
+            <PatientProfilePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="medications"
+        element={
+          <ProtectedRoute allowedRole="caretaker">
+            <MedicinePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="visits"
+        element={
+          <ProtectedRoute allowedRole="caretaker">
+            <VisitsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="analytics"
+        element={
+          <ProtectedRoute allowedRole="caretaker">
+            <AnalyticsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="gallery"
+        element={
+          <ProtectedRoute allowedRole="caretaker">
+            <GalleryPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="gallery/add"
+        element={
+          <ProtectedRoute allowedRole="caretaker">
+            <AddImagePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="memory"
+        element={
+          <ProtectedRoute allowedRole="caretaker">
+            <MemorySetupPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="documents"
+        element={
+          <ProtectedRoute allowedRole="caretaker">
+            <DocsSetupPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="sos"
+        element={
+          <ProtectedRoute allowedRole="caretaker">
+            <SosPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="live-tracking"
+        element={
+          <ProtectedRoute allowedRole="caretaker">
+            <MapPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="account"
+        element={
+          <ProtectedRoute allowedRole="caretaker">
+            <AccountPage />
+          </ProtectedRoute>
+        }
+      />
 
       <Route path="*" element={<Navigate to="dashboard" replace />} />
     </Routes>

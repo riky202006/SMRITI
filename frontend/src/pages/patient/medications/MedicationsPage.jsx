@@ -1,28 +1,100 @@
-import { useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '@/context/AppContext';
+import { useAuth } from '@/context/AuthContext';
 import { PageLayout } from '@/components/layout/DeviceFrame';
-import { getTodayStr } from '@/services/storage';
+import { getPatientByProfileId } from '@/services/patients';
+import {
+  getMedications,
+  getMedicationLogs,
+  logMedicationIntake,
+  subscribeMedications,
+  subscribeMedicationLogs,
+} from '@/services/medications';
 
 export default function MedicationsPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [tab, setTab] = useState(searchParams.get('tab') === 'visits' ? 'visits' : 'meds');
-  const { appData, setAppData, showToast } = useApp();
-  const todayStr = getTodayStr();
+  const { appData, showToast } = useApp();
+  const { user, patientRecord } = useAuth();
 
-  const takeMed = (medId, time) => {
-    setAppData((prev) => ({
-      ...prev,
-      medicine: prev.medicine.map((m) => {
-        if (m.id !== medId) return m;
-        const history = { ...(m.history || {}) };
-        if (!history[todayStr]) history[todayStr] = {};
-        history[todayStr][time] = 'TAKEN';
-        return { ...m, history };
-      }),
-    }));
-    showToast('Medicine marked as TAKEN');
+  const [patientId, setPatientId] = useState(patientRecord?.id || null);
+  const [medications, setMedications] = useState([]);
+  const [medLogs, setMedLogs] = useState([]);
+  const [loadingMeds, setLoadingMeds] = useState(true);
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  useEffect(() => {
+    if (patientRecord?.id) {
+      setPatientId(patientRecord.id);
+    } else if (user?.id) {
+      getPatientByProfileId(user.id).then(({ data }) => {
+        if (data?.id) setPatientId(data.id);
+      });
+    }
+  }, [patientRecord?.id, user?.id]);
+
+  const loadData = useCallback(() => {
+    if (!patientId) return;
+    setLoadingMeds(true);
+    Promise.all([
+      getMedications(patientId),
+      getMedicationLogs(patientId, todayStr, todayStr),
+    ])
+      .then(([medsRes, logsRes]) => {
+        setMedications(medsRes.data || []);
+        setMedLogs(logsRes.data || []);
+      })
+      .finally(() => {
+        setLoadingMeds(false);
+      });
+  }, [patientId, todayStr]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    if (!patientId) return undefined;
+    const sub1 = subscribeMedications(patientId, () => loadData());
+    const sub2 = subscribeMedicationLogs(patientId, () => loadData());
+    return () => {
+      sub1.unsubscribe();
+      sub2.unsubscribe();
+    };
+  }, [patientId, loadData]);
+
+  const takeMed = async (medId, time) => {
+    if (!patientId) return;
+    try {
+      const { error } = await logMedicationIntake({
+        medicationId: medId,
+        patientId,
+        scheduledDate: todayStr,
+        scheduledTime: time,
+        taken: true,
+        takenAt: new Date().toISOString(),
+      });
+
+      if (error) {
+        showToast('Failed to record dose: ' + error.message);
+      } else {
+        showToast('Medicine marked as TAKEN');
+        loadData();
+      }
+    } catch {
+      showToast('Error recording intake.');
+    }
+  };
+
+  const isDoseTaken = (medId, time) => {
+    const formattedTime = time.length === 5 ? `${time}:00` : time;
+    const log = medLogs.find(
+      (l) => l.medication_id === medId && (l.scheduled_time === formattedTime || l.scheduled_time === time)
+    );
+    return log?.taken || false;
   };
 
   return (
@@ -39,21 +111,23 @@ export default function MedicationsPage() {
 
         {tab === 'meds' && (
           <>
-            {(appData.medicine || []).length === 0 ? (
-              <p className="empty-msg">No medicines scheduled.</p>
+            {loadingMeds ? (
+              <p className="empty-msg">Loading cloud prescriptions...</p>
+            ) : medications.length === 0 ? (
+              <p className="empty-msg">No medicines scheduled by your caretaker.</p>
             ) : (
-              appData.medicine.map((m) => {
-                const hist = m.history?.[todayStr] || {};
-                return (
-                  <div key={m.id} className="card" style={{ padding: 16 }}>
-                    <h3 style={{ margin: '0 0 4px', fontSize: 17, color: 'var(--teal-dark)' }}>{m.name}</h3>
-                    <p style={{ margin: '0 0 10px', color: 'var(--gray)', fontSize: 14 }}>
-                      {m.type || 'Tablet'} • {m.dosage || '-'} • {m.frequency || 1}x Daily
-                    </p>
-                    {(m.times || []).map((t) => (
+              medications.map((m) => (
+                <div key={m.id} className="card" style={{ padding: 16, marginBottom: 12 }}>
+                  <h3 style={{ margin: '0 0 4px', fontSize: 17, color: 'var(--teal-dark)' }}>{m.name}</h3>
+                  <p style={{ margin: '0 0 10px', color: 'var(--gray)', fontSize: 14 }}>
+                    {m.type || 'Tablet'} • {m.dosage || '-'} • {m.frequency || 1}x Daily
+                  </p>
+                  {(m.times || []).map((t) => {
+                    const taken = isDoseTaken(m.id, t);
+                    return (
                       <div key={t} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderTop: '1px solid #eee' }}>
                         <span style={{ fontSize: 14, fontWeight: 700 }}>{t}</span>
-                        {hist[t] === 'TAKEN' ? (
+                        {taken ? (
                           <span style={{ color: '#2e7d32', fontWeight: 800, fontSize: 13 }}>✓ TAKEN</span>
                         ) : (
                           <button type="button" className="btn btn-primary btn-sm" onClick={() => takeMed(m.id, t)}>
@@ -61,10 +135,10 @@ export default function MedicationsPage() {
                           </button>
                         )}
                       </div>
-                    ))}
-                  </div>
-                );
-              })
+                    );
+                  })}
+                </div>
+              ))
             )}
           </>
         )}

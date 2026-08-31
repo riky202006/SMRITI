@@ -1,19 +1,32 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import { IconUser, IconHeart } from '@/components/icons';
 import { useAppData } from '@/hooks/useAppData';
+import { useAuth } from '@/context/AuthContext';
 
 export default function RoleSelectPage() {
   const navigate = useNavigate();
   const { setRole } = useAppData();
+  const { user, profile, loading } = useAuth();
+
+  // If user already authenticated, redirect to appropriate portal
+  useEffect(() => {
+    if (!loading && user && profile) {
+      if (profile.role === 'caretaker') {
+        navigate('/caretaker/dashboard', { replace: true });
+      } else {
+        navigate('/patient/home', { replace: true });
+      }
+    }
+  }, [user, profile, loading, navigate]);
 
   const handleSelectRole = (role) => {
     setRole(role);
     if (role === 'patient') {
-      navigate('/patient/auth/name-setup');
+      navigate('/patient/auth/login');
     } else {
-      navigate('/caretaker/auth/name-setup');
+      navigate('/caretaker/auth/login');
     }
   };
 
