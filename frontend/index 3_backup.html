@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>MeCa — MemoryCare</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --teal-dark:#0b5d52;
+    --teal-darker:#084a42;
+    --teal-mid:#12786b;
+    --mint:#8fe0c9;
+    --mint-soft:#d9f3ea;
+    --orange:#f2a93d;
+    --orange-soft:#fdeed2;
+    --cream:#f7f4ee;
+    --white:#ffffff;
+    --ink:#1c1c1c;
+    --gray:#6b7280;
+    --gray-light:#e6e3db;
+    --pink:#ef6fa0;
+    --radius-lg:28px;
+    --radius-md:20px;
+    --radius-pill:999px;
+    --shadow:0 8px 24px rgba(11,93,82,0.08);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Nunito',sans-serif;
+    background:#e9e5da;
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:24px 12px;
+  }
+  h1,h2,h3,.display{font-family:'Baloo 2',sans-serif;}
+  .device{
+    width:100%;
+    max-width:420px;
+    min-height:860px;
+    background:var(--cream);
+    border-radius:40px;
+    box-shadow:0 30px 60px rgba(0,0,0,0.18), 0 0 0 10px #111;
+    overflow:hidden;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+  }
+  .screen{
+    display:none;
+    flex-direction:column;
+    flex:1;
+    min-height:860px;
+    position:relative;
+    animation:fadeIn .25s ease;
+  }
+  .screen.active{display:flex;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+  button{font-family:inherit;cursor:pointer;border:none;background:none;}
+  input{font-family:inherit;}
+
+  /* ---------- Buttons ---------- */
+  .btn{
+    width:100%;
+    padding:18px 20px;
+    border-radius:var(--radius-pill);
+    font-size:17px;
+    font-weight:800;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    transition:transform .12s ease, opacity .12s ease;
+  }
+  .btn:active{transform:scale(0.97);}
+  .btn-primary{background:var(--teal-dark);color:#fff;}
+  .btn-outline{background:transparent;color:var(--teal-dark);border:2px solid var(--teal-dark);}
+  .btn-outline-white{background:transparent;color:var(--ink);border:2px solid #d8d4c8;}
+
+  /* ---------- Splash ---------- */
+  #screen-splash{
+    background:linear-gradient(180deg,#cdeee0 0%, #f7f4ee 55%, #f4d9c2 100%);
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:40px;
+    cursor:pointer;
+  }
+  .splash-badge{
+    position:absolute; top:22px; left:22px;
+    font-size:11px; color:#8a8f8a; display:flex; align-items:center; gap:6px;
+    opacity:.5;
+  }
+  .splash-logo{
+    width:180px;height:180px;border-radius:32px;background:#fbf7ee;
+    box-shadow:var(--shadow);
+    display:flex;align-items:center;justify-content:center;
+    margin-bottom:28px;
+  }
+  .splash-logo svg{width:120px;height:120px;}
+  #screen-splash h1{font-size:34px;color:var(--teal-dark);margin:0 0 12px;font-weight:800;}
+  #screen-splash p{font-size:16px;color:#4c5a55;line-height:1.5;max-width:280px;margin:0;}
+  .tap-hint{margin-top:40px;font-size:13px;color:#5c6b66;opacity:.7;letter-spacing:.5px;}
+
+  /* ---------- Login ---------- */
+  #screen-login{background:var(--white);padding:48px 28px 32px;align-items:center;text-align:center;}
+  .avatar-circle{
+    width:130px;height:130px;border-radius:50%;background:#eeece6;
+    display:flex;align-items:center;justify-content:center;margin-bottom:26px;
+  }
+  .avatar-circle svg{width:64px;height:64px;color:var(--teal-dark);}
+  #screen-login h1{font-size:30px;margin:0 0 14px;color:var(--ink);font-weight:800;line-height:1.2;}
+  #screen-login .sub{font-size:15px;color:var(--gray);margin:0 0 32px;line-height:1.5;}
+  .field{width:100%;text-align:left;margin-bottom:18px;}
+  .field label{display:block;font-weight:800;font-size:14px;margin-bottom:8px;}
+  .input-wrap{
+    display:flex;align-items:center;gap:10px;
+    border:2px solid #e6e3db;border-radius:16px;padding:14px 16px;background:#fff;
+  }
+  .input-wrap input{border:none;outline:none;width:100%;font-size:16px;color:var(--ink);background:transparent;}
+  .input-wrap input::placeholder{color:#a6a29a;}
+  .input-wrap svg{width:20px;height:20px;color:#8a877e;flex-shrink:0;}
+  #screen-login .btn{margin-top:10px;}
+  .caregiver-link{margin-top:22px;font-size:13px;color:var(--gray);text-decoration:underline;background:none;}
+  .error-msg{color:#c0392b;font-size:13px;text-align:left;width:100%;margin:-8px 0 12px;min-height:16px;}
+
+  /* ---------- Header bar (sub pages) ---------- */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:20px 20px 8px;
+  }
+  .topbar h2{margin:0;font-size:20px;color:var(--teal-dark);font-weight:800;}
+  .icon-btn{
+    width:38px;height:38px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:#fff;box-shadow:var(--shadow);
+  }
+  .icon-btn svg{width:18px;height:18px;color:var(--teal-dark);}
+
+  /* ---------- Home ---------- */
+  #screen-home{background:var(--cream);}
+  .home-scroll{flex:1;overflow-y:auto;padding:20px 20px 8px;display:flex;flex-direction:column;gap:16px;}
+  .home-header{display:flex;align-items:center;justify-content:space-between;padding:6px 4px 6px;}
+  .home-header .greet{font-size:13px;color:var(--gray);margin:0;}
+  .home-header .name{font-size:20px;font-weight:800;margin:2px 0 0;color:var(--ink);}
+  .bell{width:42px;height:42px;border-radius:50%;background:#fff;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;}
+  .bell svg{width:20px;height:20px;color:var(--teal-dark);}
+
+  .card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);}
+  .card-hero{
+    background:var(--mint-soft);
+    padding:30px 24px 28px;text-align:center;
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+  }
+  .hero-icon{
+    width:76px;height:76px;border-radius:50%;background:var(--teal-dark);
+    display:flex;align-items:center;justify-content:center;margin-bottom:6px;
+  }
+  .hero-icon svg{width:38px;height:38px;color:#fff;}
+  .card-hero .title{font-size:22px;font-weight:800;color:var(--teal-dark);display:flex;align-items:center;gap:8px;}
+  .card-hero .subtitle{font-size:14px;color:#4c5a55;margin:2px 0 0;}
+
+  .row-card{
+    display:flex;align-items:center;gap:16px;padding:18px 20px;
+    background:#fff;
+  }
+  .row-card.orange{background:var(--orange-soft);}
+  .row-icon{
+    width:52px;height:52px;border-radius:16px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .row-icon.orange-bg{background:var(--orange);}
+  .row-icon.gray-bg{background:#eceae3;}
+  .row-icon svg{width:26px;height:26px;color:#fff;}
+  .row-icon.gray-bg svg{color:#5f6b66;}
+  .row-text .title{font-weight:800;font-size:16px;display:flex;align-items:center;gap:6px;margin:0;}
+  .row-text .sub{font-size:13px;color:var(--gray);margin:2px 0 0;}
+  .row-text.orange-text .sub{color:#b9781c;}
+
+  /* ---------- Bottom nav ---------- */
+  .bottom-nav{
+    display:flex;align-items:center;justify-content:space-around;
+    padding:10px 6px 18px;background:#fff;
+    border-top:1px solid #eee;
+  }
+  .nav-item{
+    display:flex;flex-direction:column;align-items:center;gap:4px;
+    font-size:12px;color:#8a8f8a;font-weight:700;padding:6px 10px;border-radius:16px;
+  }
+  .nav-item svg{width:22px;height:22px;}
+  .nav-item.active{color:var(--teal-dark);}
+  .nav-item .nav-icon-circle{
+    width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  }
+  .nav-item.active .nav-icon-circle{background:var(--teal-dark);}
+  .nav-item.active .nav-icon-circle svg{color:#fff;}
+  .nav-item:not(.active) .nav-icon-circle svg{color:#8a8f8a;}
+
+  /* ---------- Game: Look carefully ---------- */
+  #screen-game-ready{background:var(--cream);padding:0;}
+  .game-ready-body{flex:1;display:flex;flex-direction:column;padding:20px 24px;}
+  .game-ready-body h2{font-size:24px;margin:8px 0 20px;font-weight:800;}
+  .stim-card{
+    background:#fff;border-radius:24px;box-shadow:var(--shadow);
+    padding:16px;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+    min-height:360px;
+  }
+  .stim-card img{width:100%;border-radius:16px;object-fit:cover;height:280px;}
+  .stim-emoji{font-size:150px;line-height:1;height:280px;display:flex;align-items:center;justify-content:center;width:100%;background:#faf8f3;border-radius:16px;}
+  .timer-row{margin-top:22px;}
+  .timer-bar-track{height:12px;border-radius:999px;background:#e6e3db;overflow:hidden;}
+  .timer-bar-fill{height:100%;background:var(--orange);border-radius:999px;transition:width .25s linear;}
+  .timer-labels{display:flex;justify-content:space-between;font-size:13px;color:var(--gray);font-weight:700;margin-top:8px;}
+  .game-footer{padding:16px 24px 26px;background:var(--cream);}
+  .q-count{text-align:center;font-size:13px;color:var(--gray);font-weight:700;margin-bottom:12px;}
+
+  /* ---------- Game: question ---------- */
+  #screen-game-question{background:var(--cream);}
+  .gq-top{display:flex;justify-content:space-between;align-items:center;padding:18px 20px 0;}
+  .gq-top .icon-btn svg{width:16px;height:16px;}
+  .gq-body{padding:10px 24px;text-align:center;flex:1;display:flex;flex-direction:column;}
+  .gq-body h2{font-size:26px;font-weight:800;margin:6px 0 8px;}
+  .gq-body .hint{font-size:14px;color:var(--gray);margin:0 0 24px;}
+  .speak-btn{background:var(--teal-dark);color:#fff;padding:18px;border-radius:var(--radius-pill);
+    display:flex;align-items:center;justify-content:center;gap:10px;font-weight:800;font-size:17px;margin-bottom:20px;}
+  .speak-btn svg{width:20px;height:20px;}
+  .options{display:flex;flex-direction:column;gap:14px;}
+  .option-btn{
+    padding:20px;border-radius:var(--radius-pill);border:2px solid #e6e3db;background:#fff;
+    font-weight:800;font-size:17px;letter-spacing:.5px;color:var(--ink);transition:.15s ease;
+  }
+  .option-btn:active{transform:scale(0.98);}
+  .option-btn.correct{background:var(--mint-soft);border-color:var(--teal-dark);color:var(--teal-dark);}
+  .option-btn.wrong{background:#fbe4e1;border-color:#d97b6f;color:#a13c2c;}
+  .gq-footer{padding:18px 24px 26px;}
+
+  /* ---------- Game: correct ---------- */
+  #screen-game-correct{background:linear-gradient(180deg,#8fe0c9 0%, #cdeee0 40%, #f7f4ee 100%);align-items:center;justify-content:flex-start;padding-top:70px;text-align:center;}
+  .correct-card{background:#fbf9f3;border-radius:32px;box-shadow:var(--shadow);padding:40px 30px;width:calc(100% - 48px);display:flex;flex-direction:column;align-items:center;}
+  .check-circle{width:96px;height:96px;border-radius:50%;background:var(--mint);display:flex;align-items:center;justify-content:center;margin-bottom:20px;}
+  .check-circle svg{width:48px;height:48px;color:var(--teal-darker);}
+  .correct-card h2{font-size:26px;font-weight:800;color:var(--ink);margin:0 0 6px;}
+  .correct-card p{color:var(--gray);margin:0 0 26px;font-size:15px;}
+  .dots-row{display:flex;gap:8px;margin-bottom:26px;}
+  .dot{width:10px;height:10px;border-radius:50%;background:#e6e3db;}
+  .dot.filled{background:var(--teal-dark);}
+
+  /* ---------- Medicine popup ---------- */
+  #screen-med-popup{background:linear-gradient(180deg,#f4d9c2 0%, #f7f4ee 55%);align-items:center;justify-content:center;padding:30px;}
+  .med-card{background:#fff;border-radius:32px;box-shadow:var(--shadow);padding:38px 30px;width:100%;text-align:center;display:flex;flex-direction:column;align-items:center;}
+  .med-circle{width:90px;height:90px;border-radius:50%;background:var(--orange);margin-bottom:22px;}
+  .med-card h2{font-size:24px;font-weight:800;line-height:1.3;margin:0 0 24px;}
+  .med-info{background:#f2f1eb;border-radius:18px;padding:16px 18px;width:100%;margin-bottom:26px;}
+  .med-info .name{color:var(--teal-dark);font-weight:800;font-size:18px;margin:0 0 6px;}
+  .med-info .when{color:var(--gray);font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px;margin:0;}
+  .med-card .btn{margin-bottom:14px;}
+
+  /* ---------- Reminders / Meds screen ---------- */
+  #screen-reminders{background:var(--cream);}
+  .reminders-body{flex:1;overflow-y:auto;padding:6px 20px 10px;}
+  .cat-row{display:flex;gap:14px;margin:14px 0 22px;}
+  .cat-card{
+    flex:1;border-radius:22px;padding:24px 10px;text-align:center;font-weight:800;font-size:16px;
+    display:flex;flex-direction:column;align-items:center;gap:10px;background:var(--mint-soft);color:var(--teal-darker);
+  }
+  .cat-card svg{width:30px;height:30px;}
+  .cat-card.active{background:var(--teal-dark);color:#fff;}
+  .section-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  .section-label h3{font-size:18px;font-weight:800;margin:0;}
+  .section-label .action{font-size:13px;color:var(--gray);font-weight:700;}
+  .day-label{font-size:14px;font-weight:800;color:var(--teal-dark);margin:18px 0 10px;}
+  .task-card{
+    display:flex;align-items:center;justify-content:space-between;
+    background:#fff;border-radius:18px;padding:16px 18px;box-shadow:var(--shadow);margin-bottom:12px;
+  }
+  .task-card .task-title{font-weight:800;font-size:15px;margin:0 0 4px;}
+  .task-card .task-time{font-size:13px;color:var(--gray);margin:0;}
+  .check-toggle{width:32px;height:32px;border-radius:50%;border:2px solid #d8d4c8;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .check-toggle.done{background:var(--teal-dark);border-color:var(--teal-dark);}
+  .check-toggle svg{width:16px;height:16px;color:#fff;}
+  .check-toggle{cursor:pointer;}
+
+  /* ---------- Stats screen ---------- */
+  #screen-stats{background:var(--cream);}
+  .stats-body{flex:1;overflow-y:auto;padding:6px 20px 10px;}
+  .ring-wrap{display:flex;flex-direction:column;align-items:center;margin:14px 0 22px;}
+  .ring-wrap .status-word{font-size:24px;font-weight:800;color:var(--ink);margin-top:8px;}
+  .ring-wrap .status-sub{font-size:13px;color:var(--gray);margin-top:2px;}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px;}
+  .stat-card{background:#fff;border-radius:20px;box-shadow:var(--shadow);padding:18px;}
+  .stat-icon{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
+  .stat-icon svg{width:18px;height:18px;color:#fff;}
+  .stat-card .label{font-size:13px;color:var(--gray);margin:0 0 4px;}
+  .stat-card .value{font-size:20px;font-weight:800;margin:0;}
+  .view-summary{width:100%;margin-bottom:22px;}
+  .perf-title{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px;margin-bottom:14px;}
+  .perf-title svg{width:18px;height:18px;color:var(--teal-dark);}
+  .perf-bars{display:flex;align-items:flex-end;gap:10px;height:100px;background:#fff;border-radius:20px;box-shadow:var(--shadow);padding:16px;}
+  .perf-bar{flex:1;background:var(--mint);border-radius:8px 8px 0 0;}
+
+  /* ---------- Intake / caregiver screen ---------- */
+  #screen-intake{background:var(--cream);}
+  .intake-body{flex:1;overflow-y:auto;padding:14px 20px 30px;}
+  .tab-row{display:flex;gap:10px;background:#eceae3;border-radius:999px;padding:6px;margin-bottom:20px;}
+  .tab-btn{flex:1;padding:12px;border-radius:999px;font-weight:800;font-size:14px;color:var(--gray);}
+  .tab-btn.active{background:var(--teal-dark);color:#fff;}
+  .photo-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--teal-dark);color:#fff;padding:14px;border-radius:16px;font-weight:800;font-size:15px;margin-bottom:22px;width:fit-content;}
+  .photo-btn svg{width:18px;height:18px;}
+  .form-card{background:#fff;border-radius:24px;box-shadow:var(--shadow);padding:24px 20px;}
+  .form-card .form-title{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;margin:0 0 20px;}
+  .form-card .form-title svg{width:24px;height:24px;color:var(--orange);}
+  .form-field{margin-bottom:18px;}
+  .form-field label{display:block;font-weight:800;font-size:14px;margin-bottom:8px;}
+  .form-field input, .form-field textarea{
+    width:100%;border:2px solid #e6e3db;border-radius:14px;padding:13px 15px;font-size:15px;color:var(--ink);outline:none;background:#faf9f6;
+  }
+  .form-field textarea{resize:none;font-family:inherit;min-height:70px;}
+  .form-field input::placeholder,.form-field textarea::placeholder{color:#a6a29a;}
+  .form-submit{margin-top:6px;}
+
+  /* toast */
+  .toast{
+    position:absolute;bottom:100px;left:50%;transform:translateX(-50%);
+    background:var(--teal-darker);color:#fff;padding:12px 22px;border-radius:999px;font-size:14px;font-weight:700;
+    box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .25s ease, bottom .25s ease;
+    white-space:nowrap;z-index:50;
+  }
+  .toast.show{opacity:1;bottom:110px;}
+
+  ::-webkit-scrollbar{width:0px;}
+</style>
+</head>
+<body>
+
+<div class="device">
+
+  <!-- ============ SPLASH ============ -->
+  <div class="screen active" id="screen-splash" onclick="go('login')">
+    <div class="splash-logo">
+      <svg viewBox="0 0 200 200" fill="none">
+        <defs>
+          <path id="heart" d="M0,4 C-1.5,0.5 -8,-1 -8,5 C-8,10.5 -2,14.5 0,18 C2,14.5 8,10.5 8,5 C8,-1 1.5,0.5 0,4 Z"/>
+        </defs>
+
+        <!-- ground wave -->
+        <path d="M28 172c22-14 44-14 62-4c20 11 46 13 70-6" stroke="#0b5d52" stroke-width="5" stroke-linecap="round" fill="none"/>
+
+        <!-- trunk -->
+        <path d="M100 168c-2-14-2-24 0-34c2-10 2-18 0-26" stroke="#0b5d52" stroke-width="7" stroke-linecap="round" fill="none"/>
+        <!-- branches -->
+        <path d="M100 134c-10-8-16-10-28-10" stroke="#0b5d52" stroke-width="5" stroke-linecap="round" fill="none"/>
+        <path d="M100 134c10-8 16-10 28-10" stroke="#0b5d52" stroke-width="5" stroke-linecap="round" fill="none"/>
+        <path d="M100 108c-8-8-12-14-14-24" stroke="#0b5d52" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+        <path d="M100 108c8-8 12-14 14-24" stroke="#0b5d52" stroke-width="4.5" stroke-linecap="round" fill="none"/>
+
+        <!-- small hanging hearts along branches -->
+        <use href="#heart" x="70" y="120" transform="scale(1)" fill="#e2a13c"/>
+        <use href="#heart" x="130" y="120" transform="scale(1)" fill="#0f6a5c"/>
+
+        <!-- canopy hearts -->
+        <use href="#heart" x="100" y="30" transform="scale(1.3)" fill="#0f6a5c"/>
+        <use href="#heart" x="82" y="38" transform="scale(1.1)" fill="#e2a13c"/>
+        <use href="#heart" x="118" y="38" transform="scale(1.1)" fill="#0b5d52"/>
+        <use href="#heart" x="64" y="48" transform="scale(1.2)" fill="#0b5d52"/>
+        <use href="#heart" x="136" y="48" transform="scale(1.2)" fill="#e2a13c"/>
+        <use href="#heart" x="100" y="50" transform="scale(1)" fill="#e2a13c"/>
+        <use href="#heart" x="50" y="62" transform="scale(1.1)" fill="#e2a13c"/>
+        <use href="#heart" x="150" y="62" transform="scale(1.1)" fill="#0f6a5c"/>
+        <use href="#heart" x="70" y="66" transform="scale(1.3)" fill="#0b5d52"/>
+        <use href="#heart" x="130" y="66" transform="scale(1.3)" fill="#0b5d52"/>
+        <use href="#heart" x="100" y="72" transform="scale(1.2)" fill="#e2a13c"/>
+        <use href="#heart" x="44" y="80" transform="scale(1)" fill="#0f6a5c"/>
+        <use href="#heart" x="156" y="80" transform="scale(1)" fill="#e2a13c"/>
+        <use href="#heart" x="60" y="90" transform="scale(1.1)" fill="#e2a13c"/>
+        <use href="#heart" x="140" y="90" transform="scale(1.1)" fill="#0b5d52"/>
+        <use href="#heart" x="82" y="94" transform="scale(1.2)" fill="#0f6a5c"/>
+        <use href="#heart" x="118" y="94" transform="scale(1.2)" fill="#0f6a5c"/>
+        <use href="#heart" x="100" y="98" transform="scale(1)" fill="#0b5d52"/>
+
+        <!-- adult figure -->
+        <circle cx="82" cy="150" r="6" fill="#0b5d52"/>
+        <path d="M82 156c-8 0-12 8-12 18h24c0-10-4-18-12-18z" fill="#0b5d52"/>
+
+        <!-- child figure -->
+        <circle cx="104" cy="158" r="4.5" fill="#0b5d52"/>
+        <path d="M104 162.5c-6 0-9 6-9 13h18c0-7-3-13-9-13z" fill="#0b5d52"/>
+
+        <!-- holding hands link -->
+        <path d="M92 170c3-2 6-2 9 0" stroke="#0b5d52" stroke-width="3" stroke-linecap="round" fill="none"/>
+      </svg>
+    </div>
+    <h1>MeCa</h1>
+    <p>Simple Games. Gentle Reminders.<br>Better Support.</p>
+    <div class="tap-hint">TAP TO CONTINUE</div>
+  </div>
+
+  <!-- ============ LOGIN ============ -->
+  <div class="screen" id="screen-login">
+    <div style="padding:48px 28px 32px;display:flex;flex-direction:column;align-items:center;text-align:center;">
+      <div class="avatar-circle">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2" stroke-linecap="round"/><circle cx="9" cy="9" r="1" fill="currentColor"/><circle cx="15" cy="9" r="1" fill="currentColor"/></svg>
+      </div>
+      <h1>Welcome to<br>MemoryCare</h1>
+      <p class="sub">Please enter your details to sign in.</p>
+
+      <div class="field">
+        <label>Name / ID</label>
+        <div class="input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>
+          <input id="login-name" type="text" placeholder="Enter your Name or ID">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>PIN</label>
+        <div class="input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="4" height="4"/><rect x="10" y="4" width="4" height="4"/><rect x="16" y="4" width="4" height="4"/><rect x="4" y="10" width="4" height="4"/><rect x="10" y="10" width="4" height="4"/><rect x="16" y="10" width="4" height="4"/><rect x="4" y="16" width="4" height="4"/><rect x="10" y="16" width="4" height="4"/><rect x="16" y="16" width="4" height="4"/></svg>
+          <input id="login-pin" type="password" placeholder="Enter your PIN" inputmode="numeric" maxlength="6">
+        </div>
+      </div>
+      <div class="error-msg" id="login-error"></div>
+
+      <button class="btn btn-primary" onclick="handleLogin()">Login &rarr;</button>
+      <button class="caregiver-link" onclick="go('intake')">Caregiver / Family Portal</button>
+    </div>
+  </div>
+
+  <!-- ============ HOME ============ -->
+  <div class="screen" id="screen-home">
+    <div class="home-scroll">
+      <div class="home-header">
+        <div>
+          <p class="greet">Good morning,</p>
+          <p class="name" id="home-username">Margaret</p>
+        </div>
+        <div class="bell">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        </div>
+      </div>
+
+      <div class="card card-hero" onclick="startGame()" style="cursor:pointer;">
+        <div class="hero-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4a3 3 0 013 3v1a3 3 0 010 6h-1a3 3 0 01-3 3M12 4a3 3 0 00-3 3v1a3 3 0 000 6h1a3 3 0 003 3"/><path d="M12 4v13"/></svg>
+        </div>
+        <div class="title">🧠 MEMORY GAME</div>
+        <p class="subtitle">Exercise your memory</p>
+      </div>
+
+      <div class="card row-card orange" onclick="go('med-popup')" style="cursor:pointer;">
+        <div class="row-icon orange-bg">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 8l9-5 9 5"/><path d="M12 3v10"/></svg>
+        </div>
+        <div class="row-text orange-text">
+          <p class="title">💊 MEDICINE</p>
+          <p class="sub">Next reminder: 9:00 AM</p>
+        </div>
+      </div>
+
+      <div class="card row-card" onclick="go('stats')" style="cursor:pointer;">
+        <div class="row-icon gray-bg">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
+        </div>
+        <div class="row-text">
+          <p class="title">📊 MY PROGRESS</p>
+          <p class="sub">See your recent activity</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-item active" onclick="go('home')">
+        <div class="nav-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></div>
+        Home
+      </div>
+      <div class="nav-item" onclick="startGame()">
+        <div class="nav-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4a3 3 0 013 3v1a3 3 0 010 6h-1a3 3 0 01-3 3M12 4a3 3 0 00-3 3v1a3 3 0 000 6h1a3 3 0 003 3"/></svg></div>
+        Games
+      </div>
+      <div class="nav-item" onclick="go('reminders')">
+        <div class="nav-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 8l9-5 9 5"/></svg></div>
+        Meds
+      </div>
+      <div class="nav-item" onclick="go('stats')">
+        <div class="nav-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg></div>
+        Stats
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ GAME: LOOK CAREFULLY ============ -->
+  <div class="screen" id="screen-game-ready">
+    <div class="gq-top">
+      <div class="icon-btn" onclick="go('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <div style="width:38px;"></div>
+    </div>
+    <div class="game-ready-body">
+      <h2>Look carefully...</h2>
+      <div class="stim-card" id="stim-card"></div>
+      <div class="timer-row">
+        <div class="timer-bar-track"><div class="timer-bar-fill" id="timer-fill" style="width:100%;"></div></div>
+        <div class="timer-labels"><span id="timer-start">10s</span><span>0s</span></div>
+      </div>
+    </div>
+    <div class="game-footer">
+      <div class="q-count">Question <span id="q-num-ready">1</span> of 10</div>
+      <button class="btn btn-primary" onclick="showQuestion()">I'M READY ✓</button>
+    </div>
+  </div>
+
+  <!-- ============ GAME: WHAT DID YOU SEE ============ -->
+  <div class="screen" id="screen-game-question">
+    <div class="gq-top">
+      <div class="icon-btn" onclick="go('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 6l12 12M18 6L6 18"/></svg></div>
+      <div class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19 8a5 5 0 010 8"/></svg></div>
+    </div>
+    <div class="gq-body">
+      <h2>What did you see?</h2>
+      <p class="hint">Tap the image name below.</p>
+      <button class="speak-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0014 0"/><path d="M12 19v3"/></svg>Speak Answer</button>
+      <div class="options" id="options-wrap"></div>
+    </div>
+    <div class="gq-footer">
+      <div class="q-count">Question <span id="q-num-q">1</span> of 10</div>
+    </div>
+  </div>
+
+  <!-- ============ GAME: WELL DONE ============ -->
+  <div class="screen" id="screen-game-correct">
+    <div class="correct-card">
+      <div class="check-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l5 5L20 7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <h2 id="correct-heading">Well Done! 🎉</h2>
+      <p id="correct-sub">That's correct.</p>
+      <div class="dots-row" id="dots-row"></div>
+      <button class="btn btn-primary" onclick="nextQuestion()">NEXT &rarr;</button>
+    </div>
+  </div>
+
+  <!-- ============ MEDICINE POPUP ============ -->
+  <div class="screen" id="screen-med-popup">
+    <div class="med-card">
+      <div class="med-circle"></div>
+      <h2>It's time for your<br>medicine.</h2>
+      <div class="med-info">
+        <p class="name">Sample Medicine</p>
+        <p class="when">☀️ After breakfast</p>
+      </div>
+      <button class="btn btn-primary" onclick="markTaken()">TAKEN</button>
+      <button class="btn btn-outline" onclick="go('home')">REMIND ME LATER</button>
+    </div>
+  </div>
+
+  <!-- ============ REMINDERS / MEDS ============ -->
+  <div class="screen" id="screen-reminders">
+    <div class="topbar">
+      <div class="icon-btn" onclick="go('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <h2>Reminders</h2>
+      <div class="icon-btn" onclick="showToast('New reminder')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg></div>
+    </div>
+    <div class="reminders-body">
+      <h3 style="font-size:15px;font-weight:800;margin:14px 0 0;">Choose a Reminder Category</h3>
+      <div class="cat-row">
+        <div class="cat-card" id="cat-medication" onclick="setCat('medication')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 8l9-5 9 5"/><path d="M12 3v10"/></svg>
+          Medication
+        </div>
+        <div class="cat-card active" id="cat-appointments" onclick="setCat('appointments')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+          Appointments
+        </div>
+      </div>
+
+      <div class="section-label">
+        <h3>Upcoming Tasks</h3>
+        <span class="action">Mark as Done</span>
+      </div>
+
+      <div class="day-label">Today</div>
+      <div class="task-card">
+        <div><p class="task-title">Medication 1</p><p class="task-time">12:30 PM</p></div>
+        <div class="check-toggle done" onclick="this.classList.toggle('done')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg></div>
+      </div>
+      <div class="task-card">
+        <div><p class="task-title">Medication 2</p><p class="task-time">10:00 PM</p></div>
+        <div class="check-toggle" onclick="this.classList.toggle('done'); if(this.classList.contains('done')){this.innerHTML='<svg viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'3\'><path d=\'M5 13l4 4L19 7\'/></svg>'}else{this.innerHTML=''}"></div>
+      </div>
+
+      <div class="day-label">Tomorrow</div>
+      <div class="task-card">
+        <div><p class="task-title">Dr. Appointment</p><p class="task-time">10:00 AM - Dr. Smith</p></div>
+        <div class="check-toggle" onclick="this.classList.toggle('done'); if(this.classList.contains('done')){this.innerHTML='<svg viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'3\'><path d=\'M5 13l4 4L19 7\'/></svg>'}else{this.innerHTML=''}"></div>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-item" onclick="go('home')"><div class="nav-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></div>Home</div>
+      <div class="nav-item" onclick="startGame()"><div class="nav-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4a3 3 0 013 3v1a3 3 0 010 6h-1a3 3 0 01-3 3M12 4a3 3 0 00-3 3v1a3 3 0 000 6h1a3 3 0 003 3"/></svg></div>Games</div>
+      <div class="nav-item active" onclick="go('reminders')"><div class="nav-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 8l9-5 9 5"/></svg></div>Meds</div>
+      <div class="nav-item" onclick="go('stats')"><div class="nav-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg></div>Stats</div>
+    </div>
+  </div>
+
+  <!-- ============ STATS / PROGRESS ============ -->
+  <div class="screen" id="screen-stats">
+    <div class="topbar">
+      <div class="icon-btn" onclick="go('home')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <h2>My Progress</h2>
+      <div style="width:38px;"></div>
+    </div>
+    <div class="stats-body">
+      <div class="ring-wrap">
+        <svg viewBox="0 0 120 120" width="150" height="150">
+          <circle cx="60" cy="60" r="50" fill="none" stroke="#e6e3db" stroke-width="14"/>
+          <circle cx="60" cy="60" r="50" fill="none" stroke="#0b5d52" stroke-width="14" stroke-dasharray="314" stroke-dashoffset="55" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+          <circle cx="60" cy="60" r="50" fill="none" stroke="#f2a93d" stroke-width="14" stroke-dasharray="314" stroke-dashoffset="259" stroke-linecap="round" transform="rotate(197 60 60)"/>
+        </svg>
+        <div class="status-word">Good</div>
+        <div class="status-sub">Status</div>
+      </div>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:#8fe0c9;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></div>
+          <p class="label">Indoor</p>
+          <p class="value">9h 14m</p>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:#f2c9a3;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="4" r="2"/><path d="M12 8l-2 6 3 8M12 8l4 4-2 4M8 14h8"/></svg></div>
+          <p class="label">Walking</p>
+          <p class="value">252</p>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:var(--orange);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+          <p class="label">Still Time</p>
+          <p class="value">7h 36m</p>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:#8fe0c9;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v3M3 12h3M12 21v-3M21 12h-3M6 6l2 2M18 6l-2 2M6 18l2-2M18 18l-2-2"/><circle cx="12" cy="12" r="3"/></svg></div>
+          <p class="label">Speed</p>
+          <p class="value">9m/m</p>
+        </div>
+      </div>
+
+      <button class="btn btn-outline view-summary" onclick="showToast('Summary coming soon')">View Summary</button>
+
+      <div class="perf-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l5-6 4 4 8-9"/></svg>Recent Performance</div>
+      <div class="perf-bars">
+        <div class="perf-bar" style="height:40%;"></div>
+        <div class="perf-bar" style="height:65%;"></div>
+        <div class="perf-bar" style="height:50%;"></div>
+        <div class="perf-bar" style="height:85%;background:#0b5d52;"></div>
+        <div class="perf-bar" style="height:60%;"></div>
+        <div class="perf-bar" style="height:75%;"></div>
+        <div class="perf-bar" style="height:45%;"></div>
+      </div>
+    </div>
+    <div class="bottom-nav">
+      <div class="nav-item" onclick="go('home')"><div class="nav-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></div>Home</div>
+      <div class="nav-item" onclick="startGame()"><div class="nav-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4a3 3 0 013 3v1a3 3 0 010 6h-1a3 3 0 01-3 3M12 4a3 3 0 00-3 3v1a3 3 0 000 6h1a3 3 0 003 3"/></svg></div>Games</div>
+      <div class="nav-item" onclick="go('reminders')"><div class="nav-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 8l9-5 9 5"/></svg></div>Meds</div>
+      <div class="nav-item active" onclick="go('stats')"><div class="nav-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg></div>Stats</div>
+    </div>
+  </div>
+
+  <!-- ============ CAREGIVER INTAKE ============ -->
+  <div class="screen" id="screen-intake">
+    <div class="topbar">
+      <div class="icon-btn" onclick="go('login')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <h2>Caregiver Portal</h2>
+      <div style="width:38px;"></div>
+    </div>
+    <div class="intake-body">
+      <div class="tab-row">
+        <button class="tab-btn active" id="tab-new-intake" onclick="setIntakeTab('new')">New Intake</button>
+        <button class="tab-btn" id="tab-compare" onclick="setIntakeTab('compare')">Compare Records</button>
+      </div>
+      <button class="photo-btn" onclick="showToast('Camera opened')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8a2 2 0 012-2h1l1.5-2h7L17 6h1a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V8z"/><circle cx="12" cy="13" r="4"/></svg>
+        Take Photo
+      </button>
+      <div class="form-card">
+        <div class="form-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h10M7 16h6"/></svg>
+          Patient Assessment Form
+        </div>
+        <div class="form-field">
+          <label>Patient Name</label>
+          <input type="text" placeholder="e.g. Susan Woodson">
+        </div>
+        <div class="form-field">
+          <label>Primary Diagnosis</label>
+          <input type="text" placeholder="Condition or focus area">
+        </div>
+        <div class="form-field">
+          <label>Current Medications</label>
+          <textarea placeholder="List current medications and dosages..."></textarea>
+        </div>
+        <button class="btn btn-primary form-submit" onclick="showToast('Assessment saved locally')">Save Assessment</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ---------- Navigation ----------
+  function go(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById('screen-'+id).classList.add('active');
+    window.scrollTo(0,0);
+  }
+
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(()=>t.classList.remove('show'), 1800);
+  }
+
+  // ---------- Login ----------
+  function handleLogin(){
+    const name = document.getElementById('login-name').value.trim();
+    const pin = document.getElementById('login-pin').value.trim();
+    const err = document.getElementById('login-error');
+    if(!name || !pin){
+      err.textContent = 'Please enter both your name/ID and PIN.';
+      return;
+    }
+    err.textContent = '';
+    document.getElementById('home-username').textContent = name;
+    go('home');
+  }
+
+  // ---------- Memory game ----------
+  const rounds = [
+    {emoji:'🍎', img:'https://live.staticflickr.com/7139/7774256944_f2b1e42d07_o.jpg', name:'APPLE', options:['APPLE','DOG','BOOK','TEA']},
+    {emoji:'🐶', img:'https://live.staticflickr.com/3235/2873249326_a697e741f5_o.jpg', name:'DOG', options:['CUP','DOG','CHAIR','SHOE']},
+    {emoji:'📖', img:'https://images.unsplash.com/photo-1472905981516-5ac09f35b7f4?fm=jpg&q=70&w=900&auto=format&fit=crop', name:'BOOK', options:['BOOK','KEY','CLOCK','HAT']},
+  ];
+  let roundIndex = 0;
+  let timerInterval = null;
+
+  function startGame(){
+    roundIndex = 0;
+    go('game-ready');
+    setupReadyScreen();
+  }
+
+  function setupReadyScreen(){
+    const round = rounds[roundIndex % rounds.length];
+    const stimCard = document.getElementById('stim-card');
+    if(round.img){
+      stimCard.innerHTML = `<img src="${round.img}" alt="${round.name}" onerror="this.parentElement.innerHTML='<div class=&quot;stim-emoji&quot;>${round.emoji}</div>'">`;
+    } else {
+      stimCard.innerHTML = `<div class="stim-emoji">${round.emoji}</div>`;
+    }
+    document.getElementById('q-num-ready').textContent = (roundIndex % 10) + 1;
+    document.getElementById('q-num-q').textContent = (roundIndex % 10) + 1;
+
+    let timeLeft = 10;
+    document.getElementById('timer-start').textContent = timeLeft + 's';
+    document.getElementById('timer-fill').style.width = '100%';
+    clearInterval(timerInterval);
+    timerInterval = setInterval(()=>{
+      timeLeft -= 1;
+      document.getElementById('timer-start').textContent = Math.max(timeLeft,0) + 's';
+      document.getElementById('timer-fill').style.width = Math.max(timeLeft,0)*10 + '%';
+      if(timeLeft <= 0){
+        clearInterval(timerInterval);
+        showQuestion();
+      }
+    }, 1000);
+  }
+
+  function showQuestion(){
+    clearInterval(timerInterval);
+    const round = rounds[roundIndex % rounds.length];
+    const wrap = document.getElementById('options-wrap');
+    wrap.innerHTML = '';
+    round.options.forEach(opt=>{
+      const btn = document.createElement('button');
+      btn.className = 'option-btn';
+      btn.textContent = opt;
+      btn.onclick = ()=>selectAnswer(opt, round.name, btn);
+      wrap.appendChild(btn);
+    });
+    go('game-question');
+  }
+
+  function selectAnswer(selected, correct, btnEl){
+    const allBtns = document.querySelectorAll('#options-wrap .option-btn');
+    allBtns.forEach(b=>b.disabled = true);
+    if(selected === correct){
+      btnEl.classList.add('correct');
+      document.getElementById('correct-heading').textContent = "Well Done! 🎉";
+      document.getElementById('correct-sub').textContent = "That's correct.";
+      buildDots(true);
+      setTimeout(()=>go('game-correct'), 500);
+    } else {
+      btnEl.classList.add('wrong');
+      allBtns.forEach(b=>{ if(b.textContent === correct) b.classList.add('correct'); });
+      document.getElementById('correct-heading').textContent = "Nice try!";
+      document.getElementById('correct-sub').textContent = "The answer was " + correct + ".";
+      buildDots(false);
+      setTimeout(()=>go('game-correct'), 900);
+    }
+  }
+
+  function buildDots(correct){
+    const row = document.getElementById('dots-row');
+    row.innerHTML = '';
+    const q = roundIndex % 10;
+    for(let i=0;i<10;i++){
+      const d = document.createElement('div');
+      d.className = 'dot' + (i <= q ? ' filled' : '');
+      row.appendChild(d);
+    }
+  }
+
+  function nextQuestion(){
+    roundIndex += 1;
+    if(roundIndex % 10 === 0){
+      go('home');
+      return;
+    }
+    go('game-ready');
+    setupReadyScreen();
+  }
+
+  // ---------- Medicine ----------
+  function markTaken(){
+    showToast('Marked as taken ✓');
+    setTimeout(()=>go('reminders'), 600);
+  }
+
+  // ---------- Reminders ----------
+  function setCat(which){
+    document.getElementById('cat-medication').classList.toggle('active', which==='medication');
+    document.getElementById('cat-appointments').classList.toggle('active', which==='appointments');
+  }
+
+  // ---------- Intake ----------
+  function setIntakeTab(which){
+    document.getElementById('tab-new-intake').classList.toggle('active', which==='new');
+    document.getElementById('tab-compare').classList.toggle('active', which==='compare');
+  }
+</script>
+</body>
+</html>

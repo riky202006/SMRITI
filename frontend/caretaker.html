@@ -1,0 +1,1840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Smriti - Caretaker</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --teal-dark:#0b5d52;
+    --teal-darker:#084a42;
+    --teal-mid:#12786b;
+    --mint:#8fe0c9;
+    --mint-soft:#d9f3ea;
+    --orange:#f2a93d;
+    --orange-soft:#fdeed2;
+    --cream:#f7f4ee;
+    --white:#ffffff;
+    --ink:#1c1c1c;
+    --gray:#6b7280;
+    --gray-light:#e6e3db;
+    --pink:#ef6fa0;
+    --radius-lg:28px;
+    --radius-md:20px;
+    --radius-pill:999px;
+    --shadow:0 8px 24px rgba(11,93,82,0.08);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'Nunito',sans-serif;
+    background:#e9e5da;
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    padding:24px 12px;
+  }
+  h1,h2,h3,.display{font-family:'Baloo 2',sans-serif;}
+  .device{
+    width:100%;
+    max-width:420px;
+    min-height:860px;
+    background:var(--cream);
+    border-radius:40px;
+    box-shadow:0 30px 60px rgba(0,0,0,0.18), 0 0 0 10px #111;
+    overflow:hidden;
+    position:relative;
+    display:flex;
+    flex-direction:column;
+  }
+  .screen{
+    display:none;
+    flex-direction:column;
+    flex:1;
+    min-height:860px;
+    position:relative;
+    animation:fadeIn .25s ease;
+  }
+  .screen.active{display:flex;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+  button{font-family:inherit;cursor:pointer;border:none;background:none;}
+  input{font-family:inherit;}
+
+  /* ---------- Buttons ---------- */
+  .btn{
+    width:100%;
+    padding:18px 20px;
+    border-radius:var(--radius-pill);
+    font-size:17px;
+    font-weight:800;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    transition:transform .12s ease, opacity .12s ease;
+  }
+  .btn:active{transform:scale(0.97);}
+  .btn-primary{background:var(--teal-dark);color:#fff;}
+  .btn-outline{background:transparent;color:var(--teal-dark);border:2px solid var(--teal-dark);}
+  .btn-outline-white{background:transparent;color:var(--ink);border:2px solid #d8d4c8;}
+
+  /* ---------- Splash ---------- */
+  #screen-splash{
+    background:linear-gradient(180deg,#cdeee0 0%, #f7f4ee 55%, #f4d9c2 100%);
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    padding:40px;
+    cursor:pointer;
+  }
+  .splash-badge{
+    position:absolute; top:22px; left:22px;
+    font-size:11px; color:#8a8f8a; display:flex; align-items:center; gap:6px;
+    opacity:.5;
+  }
+  .splash-logo{
+    width:180px;height:180px;border-radius:32px;background:#fbf7ee;
+    box-shadow:var(--shadow);
+    display:flex;align-items:center;justify-content:center;
+    margin-bottom:28px;
+  }
+  .splash-logo svg{width:120px;height:120px;}
+  #screen-splash h1{font-size:34px;color:var(--teal-dark);margin:0 0 12px;font-weight:800;}
+  #screen-splash p{font-size:16px;color:#4c5a55;line-height:1.5;max-width:280px;margin:0;}
+  .tap-hint{margin-top:40px;font-size:13px;color:#5c6b66;opacity:.7;letter-spacing:.5px;}
+
+  /* ---------- Login ---------- */
+  #screen-login{background:var(--white);padding:48px 28px 32px;align-items:center;text-align:center;}
+  .avatar-circle{
+    width:130px;height:130px;border-radius:50%;background:#eeece6;
+    display:flex;align-items:center;justify-content:center;margin-bottom:26px;
+  }
+  .avatar-circle svg{width:64px;height:64px;color:var(--teal-dark);}
+  #screen-login h1{font-size:30px;margin:0 0 14px;color:var(--ink);font-weight:800;line-height:1.2;}
+  #screen-login .sub{font-size:15px;color:var(--gray);margin:0 0 32px;line-height:1.5;}
+  .field{width:100%;text-align:left;margin-bottom:18px;}
+  .field label{display:block;font-weight:800;font-size:14px;margin-bottom:8px;}
+  .input-wrap{
+    display:flex;align-items:center;gap:10px;
+    border:2px solid #e6e3db;border-radius:16px;padding:14px 16px;background:#fff;
+  }
+  .input-wrap input{border:none;outline:none;width:100%;font-size:16px;color:var(--ink);background:transparent;}
+  .input-wrap input::placeholder{color:#a6a29a;}
+  .input-wrap svg{width:20px;height:20px;color:#8a877e;flex-shrink:0;}
+  #screen-login .btn{margin-top:10px;}
+  .caregiver-link{margin-top:22px;font-size:13px;color:var(--gray);text-decoration:underline;background:none;}
+  .error-msg{color:#c0392b;font-size:13px;text-align:left;width:100%;margin:-8px 0 12px;min-height:16px;}
+
+  /* ---------- Header bar (sub pages) ---------- */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:20px 20px 8px;
+  }
+  .topbar h2{margin:0;font-size:20px;color:var(--teal-dark);font-weight:800;}
+  .icon-btn{
+    width:38px;height:38px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    background:#fff;box-shadow:var(--shadow);
+  }
+  .icon-btn svg{width:18px;height:18px;color:var(--teal-dark);}
+
+  /* ---------- Home ---------- */
+  #screen-home{background:var(--cream);}
+  .home-scroll{flex:1;overflow-y:auto;padding:20px 20px 8px;display:flex;flex-direction:column;gap:16px;}
+  .home-header{display:flex;align-items:center;justify-content:space-between;padding:6px 4px 6px;}
+  .home-header .greet{font-size:13px;color:var(--gray);margin:0;}
+  .home-header .name{font-size:20px;font-weight:800;margin:2px 0 0;color:var(--ink);}
+  .bell{width:42px;height:42px;border-radius:50%;background:#fff;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;}
+  .bell svg{width:20px;height:20px;color:var(--teal-dark);}
+
+  .card{background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow);}
+  .card-hero{
+    background:var(--mint-soft);
+    padding:30px 24px 28px;text-align:center;
+    display:flex;flex-direction:column;align-items:center;gap:6px;
+  }
+  .hero-icon{
+    width:76px;height:76px;border-radius:50%;background:var(--teal-dark);
+    display:flex;align-items:center;justify-content:center;margin-bottom:6px;
+  }
+  .hero-icon svg{width:38px;height:38px;color:#fff;}
+  .card-hero .title{font-size:22px;font-weight:800;color:var(--teal-dark);display:flex;align-items:center;gap:8px;}
+  .card-hero .subtitle{font-size:14px;color:#4c5a55;margin:2px 0 0;}
+
+  .row-card{
+    display:flex;align-items:center;gap:16px;padding:18px 20px;
+    background:#fff;
+  }
+  .row-card.orange{background:var(--orange-soft);}
+  .row-icon{
+    width:52px;height:52px;border-radius:16px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .row-icon.orange-bg{background:var(--orange);}
+  .row-icon.gray-bg{background:#eceae3;}
+  .row-icon svg{width:26px;height:26px;color:#fff;}
+  .row-icon.gray-bg svg{color:#5f6b66;}
+  .row-text .title{font-weight:800;font-size:16px;display:flex;align-items:center;gap:6px;margin:0;}
+  .row-text .sub{font-size:13px;color:var(--gray);margin:2px 0 0;}
+  .row-text.orange-text .sub{color:#b9781c;}
+
+  /* ---------- Bottom nav ---------- */
+  .bottom-nav{
+    display:flex;align-items:center;justify-content:space-around;
+    padding:10px 6px 18px;background:#fff;
+    border-top:1px solid #eee;
+  }
+  .nav-item{
+    display:flex;flex-direction:column;align-items:center;gap:4px;
+    font-size:12px;color:#8a8f8a;font-weight:700;padding:6px 10px;border-radius:16px;
+  }
+  .nav-item svg{width:22px;height:22px;}
+  .nav-item.active{color:var(--teal-dark);}
+  .nav-item .nav-icon-circle{
+    width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  }
+  .nav-item.active .nav-icon-circle{background:var(--teal-dark);}
+  .nav-item.active .nav-icon-circle svg{color:#fff;}
+  .nav-item:not(.active) .nav-icon-circle svg{color:#8a8f8a;}
+
+  /* ---------- Game: Look carefully ---------- */
+  #screen-game-ready{background:var(--cream);padding:0;}
+  .game-ready-body{flex:1;display:flex;flex-direction:column;padding:20px 24px;}
+  .game-ready-body h2{font-size:24px;margin:8px 0 20px;font-weight:800;}
+  .stim-card{
+    background:#fff;border-radius:24px;box-shadow:var(--shadow);
+    padding:16px;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+    min-height:360px;
+  }
+  .stim-card img{width:100%;border-radius:16px;object-fit:cover;height:280px;}
+  .stim-emoji{font-size:150px;line-height:1;height:280px;display:flex;align-items:center;justify-content:center;width:100%;background:#faf8f3;border-radius:16px;}
+  .timer-row{margin-top:22px;}
+  .timer-bar-track{height:12px;border-radius:999px;background:#e6e3db;overflow:hidden;}
+  .timer-bar-fill{height:100%;background:var(--orange);border-radius:999px;}
+  .timer-labels{display:flex;justify-content:space-between;font-size:13px;color:var(--gray);font-weight:700;margin-top:8px;}
+  .game-footer{padding:16px 24px 26px;background:var(--cream);}
+  .q-count{text-align:center;font-size:13px;color:var(--gray);font-weight:700;margin-bottom:12px;}
+
+  /* ---------- Game: question ---------- */
+  #screen-game-question{background:var(--cream);}
+  .gq-top{display:flex;justify-content:space-between;align-items:center;padding:18px 20px 0;}
+  .gq-top .icon-btn svg{width:16px;height:16px;}
+  .gq-body{padding:10px 24px;text-align:center;flex:1;display:flex;flex-direction:column;}
+  .gq-body h2{font-size:26px;font-weight:800;margin:6px 0 8px;}
+  .gq-body .hint{font-size:14px;color:var(--gray);margin:0 0 24px;}
+  .speak-btn{background:var(--teal-dark);color:#fff;padding:18px;border-radius:var(--radius-pill);
+    display:flex;align-items:center;justify-content:center;gap:10px;font-weight:800;font-size:17px;margin-bottom:20px;}
+  .speak-btn svg{width:20px;height:20px;}
+  .options{display:flex;flex-direction:column;gap:14px;}
+  .option-btn{
+    padding:20px;border-radius:var(--radius-pill);border:2px solid #e6e3db;background:#fff;
+    font-weight:800;font-size:17px;letter-spacing:.5px;color:var(--ink);transition:.15s ease;
+  }
+  .option-btn:active{transform:scale(0.98);}
+  .option-btn.correct{background:var(--mint-soft);border-color:var(--teal-dark);color:var(--teal-dark);}
+  .option-btn.wrong{background:#fbe4e1;border-color:#d97b6f;color:#a13c2c;}
+  .gq-footer{padding:18px 24px 26px;}
+
+  /* ---------- Game: correct ---------- */
+  #screen-game-correct{background:linear-gradient(180deg,#8fe0c9 0%, #cdeee0 40%, #f7f4ee 100%);align-items:center;justify-content:flex-start;padding-top:70px;text-align:center;}
+  .correct-card{background:#fbf9f3;border-radius:32px;box-shadow:var(--shadow);padding:40px 30px;width:calc(100% - 48px);display:flex;flex-direction:column;align-items:center;}
+  .check-circle{width:96px;height:96px;border-radius:50%;background:var(--mint);display:flex;align-items:center;justify-content:center;margin-bottom:20px;}
+  .check-circle svg{width:48px;height:48px;color:var(--teal-darker);}
+  .correct-card h2{font-size:26px;font-weight:800;color:var(--ink);margin:0 0 6px;}
+  .correct-card p{color:var(--gray);margin:0 0 26px;font-size:15px;}
+  .dots-row{display:flex;gap:8px;margin-bottom:26px;}
+  .dot{width:10px;height:10px;border-radius:50%;background:#e6e3db;}
+  .dot.filled{background:var(--teal-dark);}
+
+  /* ---------- Medicine popup ---------- */
+  #screen-med-popup{background:linear-gradient(180deg,#f4d9c2 0%, #f7f4ee 55%);align-items:center;justify-content:center;padding:30px;}
+  .med-card{background:#fff;border-radius:32px;box-shadow:var(--shadow);padding:38px 30px;width:100%;text-align:center;display:flex;flex-direction:column;align-items:center;}
+  .med-circle{width:90px;height:90px;border-radius:50%;background:var(--orange);margin-bottom:22px;}
+  .med-card h2{font-size:24px;font-weight:800;line-height:1.3;margin:0 0 24px;}
+  .med-info{background:#f2f1eb;border-radius:18px;padding:16px 18px;width:100%;margin-bottom:26px;}
+  .med-info .name{color:var(--teal-dark);font-weight:800;font-size:18px;margin:0 0 6px;}
+  .med-info .when{color:var(--gray);font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px;margin:0;}
+  .med-card .btn{margin-bottom:14px;}
+
+  /* ---------- Reminders / Meds screen ---------- */
+  #screen-reminders{background:var(--cream);}
+  .reminders-body{flex:1;overflow-y:auto;padding:6px 20px 10px;}
+  .cat-row{display:flex;gap:14px;margin:14px 0 22px;}
+  .cat-card{
+    flex:1;border-radius:22px;padding:24px 10px;text-align:center;font-weight:800;font-size:16px;
+    display:flex;flex-direction:column;align-items:center;gap:10px;background:var(--mint-soft);color:var(--teal-darker);
+  }
+  .cat-card svg{width:30px;height:30px;}
+  .cat-card.active{background:var(--teal-dark);color:#fff;}
+  .section-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+  .section-label h3{font-size:18px;font-weight:800;margin:0;}
+  .section-label .action{font-size:13px;color:var(--gray);font-weight:700;}
+  .day-label{font-size:14px;font-weight:800;color:var(--teal-dark);margin:18px 0 10px;}
+  .task-card{
+    display:flex;align-items:center;justify-content:space-between;
+    background:#fff;border-radius:18px;padding:16px 18px;box-shadow:var(--shadow);margin-bottom:12px;
+  }
+  .task-card .task-title{font-weight:800;font-size:15px;margin:0 0 4px;}
+  .task-card .task-time{font-size:13px;color:var(--gray);margin:0;}
+  .check-toggle{width:32px;height:32px;border-radius:50%;border:2px solid #d8d4c8;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .check-toggle.done{background:var(--teal-dark);border-color:var(--teal-dark);}
+  .check-toggle svg{width:16px;height:16px;color:#fff;}
+  .check-toggle{cursor:pointer;}
+
+  /* ---------- Stats screen ---------- */
+  #screen-stats{background:var(--cream);}
+  .stats-body{flex:1;overflow-y:auto;padding:6px 20px 10px;}
+  .ring-wrap{display:flex;flex-direction:column;align-items:center;margin:14px 0 22px;}
+  .ring-wrap .status-word{font-size:24px;font-weight:800;color:var(--ink);margin-top:8px;}
+  .ring-wrap .status-sub{font-size:13px;color:var(--gray);margin-top:2px;}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px;}
+  .stat-card{background:#fff;border-radius:20px;box-shadow:var(--shadow);padding:18px;}
+  .stat-icon{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
+  .stat-icon svg{width:18px;height:18px;color:#fff;}
+  .stat-card .label{font-size:13px;color:var(--gray);margin:0 0 4px;}
+  .stat-card .value{font-size:20px;font-weight:800;margin:0;}
+  .view-summary{width:100%;margin-bottom:22px;}
+  .perf-title{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px;margin-bottom:14px;}
+  .perf-title svg{width:18px;height:18px;color:var(--teal-dark);}
+  .perf-bars{display:flex;align-items:flex-end;gap:10px;height:100px;background:#fff;border-radius:20px;box-shadow:var(--shadow);padding:16px;}
+  .perf-bar{flex:1;background:var(--mint);border-radius:8px 8px 0 0;}
+
+  /* ---------- Intake / caregiver screen ---------- */
+  #screen-intake{background:var(--cream);}
+  .intake-body{flex:1;overflow-y:auto;padding:14px 20px 30px;}
+  .tab-row{display:flex;gap:10px;background:#eceae3;border-radius:999px;padding:6px;margin-bottom:20px;}
+  .tab-btn{flex:1;padding:12px;border-radius:999px;font-weight:800;font-size:14px;color:var(--gray);}
+  .tab-btn.active{background:var(--teal-dark);color:#fff;}
+  .photo-btn{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--teal-dark);color:#fff;padding:14px;border-radius:16px;font-weight:800;font-size:15px;margin-bottom:22px;width:fit-content;}
+  .photo-btn svg{width:18px;height:18px;}
+  .form-card{background:#fff;border-radius:24px;box-shadow:var(--shadow);padding:24px 20px;}
+  .form-card .form-title{display:flex;align-items:center;gap:10px;font-weight:800;font-size:18px;margin:0 0 20px;}
+  .form-card .form-title svg{width:24px;height:24px;color:var(--orange);}
+  .form-field{margin-bottom:18px;}
+  .form-field label{display:block;font-weight:800;font-size:14px;margin-bottom:8px;}
+  .form-field input, .form-field textarea{
+    width:100%;border:2px solid #e6e3db;border-radius:14px;padding:13px 15px;font-size:15px;color:var(--ink);outline:none;background:#faf9f6;
+  }
+  .form-field textarea{resize:none;font-family:inherit;min-height:70px;}
+  .form-field input::placeholder,.form-field textarea::placeholder{color:#a6a29a;}
+  .form-submit{margin-top:6px;}
+
+  /* toast */
+  .toast{
+    position:absolute;bottom:100px;left:50%;transform:translateX(-50%);
+    background:var(--teal-darker);color:#fff;padding:12px 22px;border-radius:999px;font-size:14px;font-weight:700;
+    box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .25s ease, bottom .25s ease;
+    white-space:nowrap;z-index:50;
+  }
+  .toast.show{opacity:1;bottom:110px;}
+
+  
+  /* ---------- New Screens CSS ---------- */
+  .role-card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 24px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    margin-bottom: 16px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .role-card:active { transform: scale(0.97); }
+  .role-card.active { border-color: var(--teal-dark); background: var(--mint-soft); }
+  .role-card h2 { margin: 0; color: var(--teal-dark); font-size: 22px; }
+  
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .gallery-item {
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    text-align: center;
+    padding-bottom: 8px;
+  }
+  .gallery-item img {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    margin-bottom: 8px;
+  }
+  .gallery-item .name { font-weight: 800; font-size: 14px; color: var(--ink); }
+
+          /* Fix fonts and boundaries */
+  h1, h2, h3, h4, p { overflow-wrap: break-word; word-wrap: break-word; hyphens: auto; }
+  html, body { overflow-x: hidden !important; max-width: 100vw !important; }
+  img { max-width: 100%; }
+  
+  .device {
+    height: 860px !important; /* Lock phone boundary height */
+    overflow: hidden !important;
+  }
+  .screen {
+    height: 100% !important;
+    min-height: 0 !important; /* Critical for flex scrolling */
+    overflow: hidden !important; /* Screen itself doesn't scroll */
+    width: 100% !important;
+  }
+  .home-scroll, .game-ready-body, .gq-body, .reminders-body, .stats-body, .intake-body {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    min-height: 0 !important; /* Allow internal scrolling */
+  }
+  
+  @media (max-width: 768px) {
+    body { padding: 0 !important; background: var(--cream); }
+    .device { 
+      max-width: 100vw !important; 
+      width: 100% !important;
+      height: 100vh !important; 
+      border-radius: 0 !important; 
+      box-shadow: none !important; 
+      border: none !important;
+    }
+    .screen { 
+      height: 100vh !important; 
+    }
+    .splash-logo svg { width: 90px; height: 90px; }
+  }
+::-webkit-scrollbar{width:0px;}
+</style>
+<style>
+  /* Caretaker Specific Styles */
+  .ct-dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+  .ct-card { background: #fff; border-radius: 20px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: center; cursor: pointer; border: 2px solid transparent; transition: 0.2s; }
+  .ct-card:active { transform: scale(0.96); border-color: var(--teal); }
+  .ct-card svg { width: 32px; height: 32px; color: var(--teal); margin-bottom: 8px; }
+  .ct-card.orange-theme svg { color: var(--orange); }
+  .ct-card p { font-weight: 700; font-size: 14px; margin: 0; color: var(--ink); }
+  
+  .img-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+  .img-item { display: flex; align-items: center; background: #fff; border-radius: 16px; padding: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); gap: 12px; }
+  .img-item img { width: 60px; height: 60px; border-radius: 12px; object-fit: cover; }
+  .img-item .info { flex: 1; }
+  .img-item .info h4 { margin: 0; font-size: 16px; font-weight: 800; }
+  .img-item .actions { display: flex; gap: 8px; }
+  .img-item .actions button { background: var(--gray-light); border: none; padding: 8px; border-radius: 8px; cursor: pointer; color: var(--ink); }
+  .img-item .actions button.delete { color: #d32f2f; background: #ffebee; }
+  
+  .setting-row { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 16px; border-radius: 16px; margin-bottom: 12px; }
+  .setting-row .title { font-weight: 800; font-size: 15px; }
+  .setting-row .sub { font-size: 13px; color: var(--gray); margin-top: 4px; }
+  
+  .stat-card { background: #fff; padding: 16px; border-radius: 16px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;}
+  .stat-card .val { font-size: 24px; font-weight: 800; color: var(--teal); }
+  .stat-card.orange .val { color: var(--orange); }
+
+  .review-item { background: #fff; padding: 16px; border-radius: 16px; margin-bottom: 12px; }
+  .review-item .stars { color: #ffc107; font-size: 18px; margin-bottom: 4px; }
+  .review-item .text { font-size: 14px; font-style: italic; margin-bottom: 8px; }
+  .review-item .author { font-size: 12px; color: var(--gray); font-weight: 700; text-align: right; }
+  
+  .upload-box { border: 2px dashed var(--teal); border-radius: 16px; padding: 24px; text-align: center; color: var(--teal); font-weight: 700; cursor: pointer; margin-bottom: 16px; background: rgba(54,142,126,0.05); }
+</style>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body>
+
+<div class="device">
+  
+  <!-- ============ LOGIN ============ -->
+  <div class="screen active" id="screen-login">
+    <div class="intake-body" style="justify-content:center;">
+      <div style="text-align:center; margin-bottom:30px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:60px;height:60px;color:var(--teal);"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        <h1 style="font-size:32px; margin:10px 0 0; color:var(--teal-dark);">Welcome, Caretaker</h1>
+        <p style="color:var(--gray); margin-top:5px;">Manage patient care settings</p>
+      </div>
+
+      <div class="form-card">
+        <div class="form-field">
+          <label>Caretaker ID / Name</label>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <input type="text" placeholder="Enter name">
+          </div>
+        </div>
+        <div class="form-field">
+          <label>PIN</label>
+          <div class="input-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="4" height="4"/><rect x="10" y="4" width="4" height="4"/><rect x="16" y="4" width="4" height="4"/><rect x="4" y="10" width="4" height="4"/><rect x="10" y="10" width="4" height="4"/><rect x="16" y="10" width="4" height="4"/><rect x="4" y="16" width="4" height="4"/><rect x="10" y="16" width="4" height="4"/><rect x="16" y="16" width="4" height="4"/></svg>
+            <input type="password" placeholder="Enter PIN">
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-primary" style="margin-top:20px;" onclick="go('role')">Login &rarr;</button>
+    </div>
+  </div>
+
+  <!-- ============ ROLE ============ -->
+  <div class="screen" id="screen-role">
+    <div class="intake-body">
+      <h2 style="text-align:center; margin-bottom:30px; font-size:28px;">What is your role?</h2>
+      
+      <div class="card row-card" onclick="setRole('Guardian'); go('name-setup')" style="cursor:pointer; margin-bottom:12px;">
+        <div class="row-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg></div>
+        <div class="row-text"><p class="title">Guardian / Family Member</p></div>
+      </div>
+      <div class="card row-card" onclick="setRole('Professional'); go('name-setup')" style="cursor:pointer; margin-bottom:12px;">
+        <div class="row-icon orange-bg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+        <div class="row-text orange-text"><p class="title">Professional Caretaker</p></div>
+      </div>
+      <div class="card row-card" onclick="setRole('Hospital'); go('name-setup')" style="cursor:pointer; margin-bottom:12px;">
+        <div class="row-icon gray-bg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></div>
+        <div class="row-text"><p class="title">Hospital / Healthcare Worker</p></div>
+      </div>
+      <div class="card row-card" onclick="setRole('Other'); go('name-setup')" style="cursor:pointer;">
+        <div class="row-icon gray-bg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></div>
+        <div class="row-text"><p class="title">Other</p></div>
+      </div>
+    </div>
+  
+  <!-- ============ NAME SETUP ============ -->
+  <div class="screen" id="screen-name-setup" style="justify-content:center; align-items:center; text-align:center; padding:24px;">
+    <div style="background:#fff; padding:40px 24px; border-radius:32px; box-shadow:var(--shadow); width:100%; max-width:340px;">
+      <h2 style="font-size:28px; margin:0 0 12px; color:var(--teal-dark); line-height:1.2;">By what name should I call you?</h2>
+      <p style="color:var(--gray); font-size:16px; margin:0 0 32px;">Enter the name you'd like us to use.</p>
+      
+      <div class="input-wrap" style="margin-bottom:24px; display:flex; align-items:center; gap:10px; border:2px solid #e6e3db; border-radius:16px; padding:14px 16px; background:#fff;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px; height:20px; color:#8a877e;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        <input id="setup-name" type="text" placeholder="Your Name" style="font-size:20px; font-weight:700; border:none; outline:none; width:100%; color:var(--ink);">
+      </div>
+      
+      <button class="btn btn-primary" onclick="handleNameSetup()" style="font-size:18px; padding:16px;">CONTINUE</button>
+    </div>
+  </div>
+
+  </div>
+
+  <!-- ============ DASHBOARD ============ -->
+  <div class="screen" id="screen-dashboard">
+    <div class="home-scroll">
+      <div class="home-header">
+        <div>
+          <p class="greet" id="ct-greeting">Caregiver Dashboard</p>
+          <p class="name" id="ct-name" style="font-size:24px; color:var(--teal-dark); font-weight:800;"></p>
+        </div>
+        <div><a href="index 3.html" style="font-size:14px; color:var(--teal); text-decoration:none; font-weight:700;">Patient View &rarr;</a></div>
+      </div>
+
+      <div class="card row-card" onclick="go('patient')" style="cursor:pointer; margin-bottom:8px;">
+        <div class="row-icon teal-bg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+        <div class="row-text">
+          <p class="title">Patient Overview</p>
+          <p class="sub">Manage patient profile</p>
+        </div>
+      </div>
+
+      
+      
+      <!-- MED SUMMARY CARD -->
+      <div class="card" style="margin-top:16px; padding:16px;" onclick="go('medicine')" style="cursor:pointer;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <h3 style="margin:0;">💊 Today's Medications</h3>
+          <span style="color:var(--teal); font-size:13px; font-weight:700;">View →</span>
+        </div>
+        <p id="dash-med-summary" style="margin:0; color:var(--gray); font-size:14px;">Loading...</p>
+      </div>
+
+      <!-- LIVE TRACKING CARD -->
+      <div class="card" style="margin-top:16px; border:2px solid var(--teal); padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <h3 style="margin:0;">PATIENT LIVE TRACKING</h3>
+          <span id="dash-track-status" style="font-weight:700; color:var(--gray);">LIVE TRACKING OFF</span>
+        </div>
+        
+        <div id="dash-map-container" style="display:none;">
+          <p style="margin:0 0 8px; font-size:14px;">Patient Location: <span id="dash-track-latlng"></span></p>
+          <div id="leaflet-map-dash" style="width:100%; height:200px; background:#e6e3db; border-radius:12px; margin-bottom:8px; position:relative; z-index:1;"></div>
+          <p style="margin:0; font-size:12px; color:var(--gray);">Last Updated: <span id="dash-track-time">-</span></p>
+        </div>
+        <div id="dash-map-off-msg" style="color:var(--gray); font-size:14px; text-align:center; padding:20px 0;">
+          Tracking is currently disabled by the patient.
+        </div>
+      </div>
+
+
+      <div class="card row-card" onclick="loadAccount(); go('account')" style="cursor:pointer; margin-top:16px;">
+        <div class="row-icon gray-bg">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </div>
+        <div class="row-text">
+          <p class="title">👤 ACCOUNT</p>
+          <p class="sub">View and edit your profile</p>
+        </div>
+      </div>
+
+
+      <div style="margin-top:20px;">
+        <h3 style="font-size:18px; margin-bottom:12px;">Additional Resources</h3>
+        <div class="card row-card" onclick="go('internship')" style="cursor:pointer; margin-bottom:8px;">
+          <div class="row-icon gray-bg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <div class="row-text"><p class="title">Care Support & Internship</p></div>
+        </div>
+        <div class="card row-card" onclick="go('market')" style="cursor:pointer;">
+          <div class="row-icon gray-bg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg></div>
+          <div class="row-text"><p class="title">Market</p><p class="sub">Coming Soon</p></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="bottom-nav">
+      <div class="nav-item active" onclick="go('name-setup')">
+        <div class="nav-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg></div>
+        Home
+      </div>
+      <div class="nav-item" onclick="go('memory-setup')">
+        <div class="nav-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4a3 3 0 013 3v1a3 3 0 010 6h-1a3 3 0 01-3 3M12 4a3 3 0 00-3 3v1a3 3 0 000 6h1a3 3 0 003 3"/></svg></div>
+        Games
+      </div>
+      <div class="nav-item" onclick="go('visits')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px;margin-right:6px;vertical-align:middle;"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+          Visits
+        </div>
+        <div class="nav-item" onclick="go('medicine')">
+        <div class="nav-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 8l9-5 9 5"/></svg></div>
+        Meds
+      </div>
+      <div class="nav-item" onclick="go('analytics')">
+        <div class="nav-icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg></div>
+        Stats
+      </div>
+    </div>
+  </div>
+
+  
+  <!-- ============ PATIENT PROFILE ============ -->
+  <div class="screen" id="screen-patient">
+    <div class="top-nav">
+      <div class="icon-btn" onclick="go('name-setup')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <span class="title">Patient Profile</span>
+      <div style="width:38px;"></div>
+    </div>
+    <div class="home-scroll">
+      <div class="form-card" style="margin-bottom:24px;">
+        <h3 style="margin-top:0;">Basic Information</h3>
+        <div class="form-field"><label>Name</label><input type="text" id="pt-name" placeholder="Patient Name"></div>
+        <div class="form-field"><label>Age</label><input type="number" id="pt-age" placeholder="Age"></div>
+        <div class="form-field"><label>Address</label><input type="text" id="pt-addr" placeholder="Address"></div>
+        <div class="form-field"><label>City</label><input type="text" id="pt-city" placeholder="City"></div>
+        <div class="form-field"><label>District</label><input type="text" id="pt-dist" placeholder="District"></div>
+        <div class="form-field"><label>State</label><input type="text" id="pt-state" placeholder="State"></div>
+      </div>
+      
+      <div class="form-card" style="margin-bottom:24px;">
+        <h3 style="margin-top:0;">Emergency Contacts</h3>
+        <p style="color:var(--gray); font-size:14px; margin-top:-10px;">Fill in as many as apply.</p>
+        
+        <h4 style="margin-bottom:8px;">1. Son</h4>
+        <div class="form-field"><input type="text" id="ec-son-name" placeholder="Name"></div>
+        <div class="form-field"><input type="tel" id="ec-son-phone" placeholder="Phone Number"></div>
+        
+        <h4 style="margin-bottom:8px;">2. Wife</h4>
+        <div class="form-field"><input type="text" id="ec-wife-name" placeholder="Name"></div>
+        <div class="form-field"><input type="tel" id="ec-wife-phone" placeholder="Phone Number"></div>
+        
+        <h4 style="margin-bottom:8px;">3. Guardian / Responsible Person</h4>
+        <div class="form-field"><input type="text" id="ec-guard-name" placeholder="Name"></div>
+        <div class="form-field"><input type="tel" id="ec-guard-phone" placeholder="Phone Number"></div>
+        
+        <h4 style="margin-bottom:8px;">4. House / Family Contact</h4>
+        <div class="form-field"><input type="text" id="ec-house-name" placeholder="Name"></div>
+        <div class="form-field"><input type="tel" id="ec-house-phone" placeholder="Phone Number"></div>
+        
+        <h4 style="margin-bottom:8px;">5. Additional Contact</h4>
+        <div class="form-field"><input type="text" id="ec-other-rel" placeholder="Relationship (e.g. Neighbor)"></div>
+        <div class="form-field"><input type="text" id="ec-other-name" placeholder="Name"></div>
+        <div class="form-field"><input type="tel" id="ec-other-phone" placeholder="Phone Number"></div>
+      </div>
+      
+      <button class="btn btn-primary" onclick="savePatientProfile()">Save Patient Profile</button>
+    </div>
+  </div>
+
+
+  
+  <!-- ============ DOCUMENTS SETUP ============ -->
+  <div class="screen" id="screen-docs-setup">
+    <div class="top-nav">
+      <div class="icon-btn" onclick="go('name-setup')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <span class="title">Docs & Prescriptions</span>
+      <div style="width:38px;"></div>
+    </div>
+    <div class="home-scroll">
+      
+      <h3 style="margin-top:0;">Prescriptions</h3>
+      <div class="form-card" style="margin-bottom:24px;">
+        <h4 style="margin-top:0;">Add Prescription</h4>
+        <div class="form-field"><label>Medicine Name</label><input type="text" id="rx-name"></div>
+        <div class="form-field"><label>Dosage / Instructions</label><input type="text" id="rx-dose"></div>
+        <div class="form-field"><label>Time</label><input type="text" id="rx-time" placeholder="e.g. 9:00 AM"></div>
+        <div class="form-field"><label>Doctor (Optional)</label><input type="text" id="rx-doc"></div>
+        <button class="btn btn-primary" onclick="saveRx()">Add Prescription</button>
+      </div>
+      <div id="rx-list" style="margin-bottom:32px;"></div>
+      
+      <h3 style="margin-top:0;">Documents</h3>
+      <div class="upload-box" onclick="document.getElementById('doc-file').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:32px; height:32px; margin-bottom:8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><br>
+        + Upload Document
+        <p style="font-size:12px; margin-top:4px; font-weight:normal;">Supported: PDF, JPG, PNG</p>
+      </div>
+      <input type="file" id="doc-file" style="display:none;" accept=".pdf,image/png,image/jpeg" onchange="uploadDoc(event)">
+      
+      <div id="ct-doc-list"></div>
+      
+    </div>
+  </div>
+
+  <!-- ============ MEMORY GAME SETUP ============ -->
+  <div class="screen" id="screen-memory-setup">
+    <div class="top-nav">
+      <div class="icon-btn" onclick="go('name-setup')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <span class="title">Memory Game Setup</span>
+      <div style="width:38px;"></div>
+    </div>
+    <div class="home-scroll">
+      
+      <div class="setting-row">
+        <div>
+          <div class="title">Gemini AI Images</div>
+          <div class="sub">Add safe supplementary AI images</div>
+        </div>
+        <div>
+          <button class="btn btn-primary" style="padding:8px 16px; font-size:14px; border-radius:20px;">Enable</button>
+        </div>
+      </div>
+      
+      <div class="setting-row">
+        <div>
+          <div class="title">Difficulty</div>
+          <div class="sub">Adjust answer similarity</div>
+        </div>
+        <div style="font-weight:700; color:var(--teal);">Medium</div>
+      </div>
+
+      <h3 style="margin:24px 0 12px;">Personalized Images</h3>
+      <p style="font-size:14px; color:var(--gray); margin-top:-8px;">Maximum 10 images allowed. <span id="img-count-label">0</span>/10 used.</p>
+      
+      <div class="upload-box" id="upload-box" onclick="triggerAddImage()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:32px; height:32px; margin-bottom:8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg><br>
+        + Add Personalized Image
+      </div>
+      
+      <div class="img-list" id="ct-img-list">
+        <!-- Rendered via JS -->
+      </div>
+      
+    </div>
+  </div>
+
+  <!-- Add Image Popup (Simulated File Input) -->
+  <div class="screen" id="screen-add-image">
+    <div class="top-nav">
+      <div class="icon-btn" onclick="go('memory-setup')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <span class="title">Upload Image</span>
+      <div style="width:38px;"></div>
+    </div>
+    <div class="intake-body">
+      <div style="background:#e6e3db; height:200px; border-radius:16px; margin-bottom:20px; display:flex; align-items:center; justify-content:center; color:var(--gray);">
+        [ Demo: Image Preview ]
+      </div>
+      <div class="form-field">
+        <label>Who is this? (Name/Title)</label>
+        <input type="text" id="new-img-name" placeholder="e.g., Grandma, Family Dog">
+      </div>
+      <button class="btn btn-primary" onclick="saveNewImage()">Save Image</button>
+    </div>
+  </div>
+
+  <!-- ============ GALLERY ============ -->
+  <div class="screen" id="screen-gallery">
+    <div class="top-nav">
+      <div class="icon-btn" onclick="go('name-setup')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <span class="title">Patient Gallery</span>
+      <div style="width:38px;"></div>
+    </div>
+    <div class="home-scroll">
+      <p style="color:var(--gray); font-size:14px;">The patient sees these images in their gallery.</p>
+      <div class="img-list" id="ct-gallery-list">
+        <!-- Re-use personalized images for now -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MEDICINE ============ -->
+  <div class="screen" id="screen-medicine">
+    <div class="top-nav">
+      <div class="icon-btn" onclick="go('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <span class="title">Medication</span>
+      <div style="width:38px;"></div>
+    </div>
+    <div class="home-scroll" style="padding:16px;">
+      <!-- ADD MEDICINE FORM -->
+      <div class="form-card" style="margin-bottom:24px;">
+        <h3 style="margin-top:0; font-size:18px;">Add Medicine</h3>
+        <div class="form-field">
+          <label>Medicine Name</label>
+          <input type="text" id="med-name" placeholder="e.g. Paracetamol">
+        </div>
+        <div class="form-field">
+          <label>Medicine Type</label>
+          <select id="med-type" style="width:100%; padding:12px; border-radius:12px; border:2px solid var(--teal); font-size:16px; background:var(--white);">
+            <option value="Tablet">Tablet</option>
+            <option value="Capsule">Capsule</option>
+            <option value="Syrup">Syrup</option>
+            <option value="Injection">Injection</option>
+            <option value="Drops">Drops</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Dosage</label>
+          <input type="text" id="med-dosage" placeholder="e.g. 1 tablet, 10 ml">
+        </div>
+        <div class="form-field">
+          <label>Frequency</label>
+          <select id="med-frequency" onchange="updateFrequencyTimes()" style="width:100%; padding:12px; border-radius:12px; border:2px solid var(--teal); font-size:16px; background:var(--white);">
+            <option value="1">1x Daily</option>
+            <option value="2">2x Daily</option>
+            <option value="3">3x Daily</option>
+          </select>
+        </div>
+        <div id="med-times-section">
+          <div class="form-field" id="time-1-wrap">
+            <label id="time-1-label">Night</label>
+            <input type="time" id="med-time-1" value="21:00">
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="addMedicine()">Add Medicine</button>
+      </div>
+
+      <!-- TODAY SUMMARY -->
+      <h3 style="font-size:16px; font-weight:800; margin-bottom:8px;">TODAY'S STATUS</h3>
+      <div style="display:flex; gap:12px; margin-bottom:20px;">
+        <div style="flex:1; background:#e8f5e9; border-radius:12px; padding:12px; text-align:center;">
+          <div style="font-size:24px; font-weight:800; color:#2e7d32;" id="ct-stat-taken">0</div>
+          <div style="font-size:12px; color:var(--gray);">✓ Taken</div>
+        </div>
+        <div style="flex:1; background:#fff8e1; border-radius:12px; padding:12px; text-align:center;">
+          <div style="font-size:24px; font-weight:800; color:#f57f17;" id="ct-stat-pending">0</div>
+          <div style="font-size:12px; color:var(--gray);">⏰ Pending</div>
+        </div>
+        <div style="flex:1; background:#ffebee; border-radius:12px; padding:12px; text-align:center;">
+          <div style="font-size:24px; font-weight:800; color:#c62828;" id="ct-stat-missed">0</div>
+          <div style="font-size:12px; color:var(--gray);">⚠ Missed</div>
+        </div>
+      </div>
+
+      <!-- MEDICINE LIST -->
+      <h3 style="font-size:16px; font-weight:800; margin-bottom:8px;">MEDICATION SCHEDULE</h3>
+      <div id="med-list"><!-- Rendered via JS --></div>
+
+      <!-- NOTIFICATION HISTORY -->
+      <h3 style="font-size:16px; font-weight:800; margin:20px 0 8px;">NOTIFICATION HISTORY</h3>
+      <div id="ct-notif-list" style="font-size:13px;">
+        <p style="color:var(--gray);">No notifications yet.</p>
+      </div>
+    </div>
+  </div>
+
+  
+  <!-- ============ VISITS & APPOINTMENTS ============ -->
+  <div class="screen" id="screen-visits">
+    <div class="top-nav">
+      <div class="icon-btn" onclick="go('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <span class="title">Visits &amp; Appointments</span>
+      <div style="width:38px;"></div>
+    </div>
+    <div class="home-scroll" style="padding:16px;">
+      <!-- ADD FORM -->
+      <div class="form-card" style="margin-bottom:24px;">
+        <h3 style="margin-top:0;">Add Visit / Appointment</h3>
+        <div class="form-field">
+          <label>Type</label>
+          <select id="visit-kind" onchange="updateVisitForm()" style="width:100%; padding:12px; border-radius:12px; border:2px solid var(--teal); font-size:16px; background:var(--white);">
+            <option value="visitor">Person Visiting</option>
+            <option value="doctor">Doctor Appointment</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>Name</label>
+          <input type="text" id="visit-name" placeholder="Name">
+        </div>
+        <div id="visit-visitor-fields">
+          <div class="form-field">
+            <label>Relationship</label>
+            <input type="text" id="visit-relation" placeholder="e.g. Family Friend">
+          </div>
+        </div>
+        <div id="visit-doctor-fields" style="display:none;">
+          <div class="form-field">
+            <label>Specialization</label>
+            <input type="text" id="visit-specialization" placeholder="e.g. Neurologist">
+          </div>
+          <div class="form-field">
+            <label>Location</label>
+            <input type="text" id="visit-location" placeholder="e.g. City Hospital">
+          </div>
+        </div>
+        <div class="form-field">
+          <label>Date</label>
+          <input type="date" id="visit-date">
+        </div>
+        <div class="form-field">
+          <label>Time</label>
+          <input type="time" id="visit-time">
+        </div>
+        <div class="form-field">
+          <label>Purpose</label>
+          <input type="text" id="visit-purpose" placeholder="Purpose / Reason">
+        </div>
+        <button class="btn btn-primary" onclick="addVisit()">Add</button>
+      </div>
+
+      <h3 style="font-size:16px; font-weight:800; margin-bottom:8px;">UPCOMING</h3>
+      <div id="ct-visits-list">
+        <p style="color:var(--gray);">No visits or appointments added.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ANALYTICS ============ -->
+  <div class="screen" id="screen-analytics">
+    <div class="top-nav">
+      <div class="icon-btn" onclick="go('name-setup')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <span class="title">Patient Analytics</span>
+      <div style="width:38px;"></div>
+    </div>
+    <div class="home-scroll">
+      <h3 style="margin-top:0; color:var(--gray);">Cognitive Engagement</h3>
+      
+      <div class="stat-card">
+        <div>
+          <p style="margin:0; font-size:14px; color:var(--gray); font-weight:700;">Games Completed</p>
+          <div class="val">12</div>
+        </div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" style="width:32px; height:32px;"><path d="M12 4a3 3 0 013 3v1a3 3 0 010 6h-1a3 3 0 01-3 3M12 4a3 3 0 00-3 3v1a3 3 0 000 6h1a3 3 0 003 3"/></svg>
+      </div>
+      <div class="stat-card">
+        <div>
+          <p style="margin:0; font-size:14px; color:var(--gray); font-weight:700;">Average Score</p>
+          <div class="val">85%</div>
+        </div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" style="width:32px; height:32px;"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      </div>
+      
+      <h3 style="margin-top:16px; color:var(--gray);">Activity</h3>
+      <div class="stat-card orange">
+        <div>
+          <p style="margin:0; font-size:14px; color:var(--gray); font-weight:700;">Pending Reminders</p>
+          <div class="val" id="stat-meds">1</div>
+        </div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2" style="width:32px; height:32px;"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M3 8l9-5 9 5"/></svg>
+      </div>
+      <div class="stat-card">
+        <div>
+          <p style="margin:0; font-size:14px; color:var(--gray); font-weight:700;">Personalized Images</p>
+          <div class="val" id="stat-images">0</div>
+        </div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" style="width:32px; height:32px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ REVIEWS ============ -->
+  <div class="screen" id="screen-reviews">
+    <div class="top-nav">
+      <div class="icon-btn" onclick="go('name-setup')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <span class="title">Reviews & Feedback</span>
+      <div style="width:38px;"></div>
+    </div>
+    <div class="home-scroll">
+      <div class="review-item">
+        <div class="stars">★★★★★</div>
+        <div class="text">"Easy to use and the memory games are engaging. Mom loves seeing family pictures!"</div>
+        <div class="author">- Sarah W.</div>
+      </div>
+      <div class="review-item">
+        <div class="stars">★★★★☆</div>
+        <div class="text">"The large text is very helpful. Reminders keep us on track."</div>
+        <div class="author">- John D.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SOS ============ -->
+  <div class="screen" id="screen-sos">
+    <div class="top-nav">
+      <div class="icon-btn" onclick="go('name-setup')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <span class="title">SOS / Emergency</span>
+      <div style="width:38px;"></div>
+    </div>
+    <div class="intake-body">
+      <div style="text-align:center; padding:20px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#d32f2f" stroke-width="2" style="width:80px;height:80px;margin-bottom:20px;"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 16.92z"/></svg>
+        <h2 style="color:#d32f2f; font-size:28px;">Emergency Contact</h2>
+        <p style="font-size:18px;">Susan Woodson<br>(Daughter)</p>
+        <p style="font-size:24px; font-weight:800; margin-bottom:40px;">+1 555-0198</p>
+        
+        <button class="btn btn-primary" style="background:#d32f2f; font-size:18px; padding:20px;" onclick="showToast('Calling emergency contact...')">Call Now</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ INTERNSHIP ============ -->
+  <div class="screen" id="screen-internship">
+    <div class="top-nav">
+      <div class="icon-btn" onclick="go('name-setup')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <span class="title">Care Support</span>
+      <div style="width:38px;"></div>
+    </div>
+    <div class="home-scroll">
+      <h3 style="margin-top:0;">Volunteer & Internship Opportunities</h3>
+      <p style="color:var(--gray);">Join the network to provide care support and companionship.</p>
+      
+      <div class="card" style="margin-bottom:12px;">
+        <h4 style="margin:0 0 8px;">Caregiver Support Program</h4>
+        <p style="font-size:14px; margin:0 0 12px;">Local youth matching program for companionship.</p>
+        <button class="btn btn-primary" style="padding:8px; font-size:14px;">Learn More</button>
+      </div>
+      <div class="card">
+        <h4 style="margin:0 0 8px;">Training / Learning</h4>
+        <p style="font-size:14px; margin:0 0 12px;">Resources and guidelines for dementia care.</p>
+        <button class="btn btn-primary" style="padding:8px; font-size:14px;">View Materials</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MARKET ============ -->
+  <div class="screen" id="screen-market">
+    <div class="top-nav">
+      <div class="icon-btn" onclick="go('name-setup')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <span class="title">Market</span>
+      <div style="width:38px;"></div>
+    </div>
+    <div class="intake-body" style="align-items:center; justify-content:center;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--gray)" stroke-width="2" style="width:64px;height:64px;margin-bottom:16px;"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg>
+      <h2 style="color:var(--gray);">Coming Soon</h2>
+      <p style="color:var(--gray); text-align:center;">The marketplace for specialized care products will be available in a future update.</p>
+    </div>
+  </div>
+
+</div>
+
+  
+  <!-- ============ ACCOUNT ============ -->
+  <div class="screen" id="screen-account">
+    <div class="top-nav">
+      <div class="icon-btn" onclick="go('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <span class="title">My Account</span>
+      <div style="width:38px;"></div>
+    </div>
+    <div class="home-scroll" style="padding:20px;">
+      <div style="text-align:center; margin-bottom:24px;">
+        <div style="width:100px; height:100px; border-radius:50%; background:var(--mint); margin:0 auto 12px; display:flex; align-items:center; justify-content:center; color:var(--teal-dark);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:50px; height:50px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        </div>
+      </div>
+      
+      <div class="field">
+        <label>Name</label>
+        <div class="input-wrap"><input id="acc-name" type="text" placeholder="Your Name"></div>
+      </div>
+      <div class="field">
+        <label>Phone Number</label>
+        <div class="input-wrap"><input id="acc-phone" type="text" placeholder="Phone Number"></div>
+      </div>
+      <div class="field">
+        <label>Email</label>
+        <div class="input-wrap"><input id="acc-email" type="text" placeholder="Email Address"></div>
+      </div>
+      
+      <button class="btn btn-primary" onclick="saveAccount()" style="margin-top:20px;">SAVE CHANGES</button>
+    </div>
+  </div>
+
+
+  <!-- ============ FULL MAP ============ -->
+  <div class="screen" id="screen-map" style="display:none; flex-direction:column; height:100%;">
+    <div class="top-nav">
+      <div class="icon-btn" onclick="go('name-setup')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <span class="title">Live Location</span>
+      <div style="width:38px;"></div>
+    </div>
+    
+    <div style="padding:16px; background:var(--cream); border-bottom:1px solid #ddd;">
+      <p style="margin:0; font-weight:800; font-size:16px;">PATIENT</p>
+      <p style="margin:0 0 8px; font-size:14px;" id="map-pt-name">Loading...</p>
+      
+      <p style="margin:0; font-weight:800; font-size:16px;">STATUS</p>
+      <p style="margin:0 0 8px; font-size:14px;" id="map-track-status">● OFF</p>
+      
+      <p style="margin:0; font-weight:800; font-size:16px;">UPDATED</p>
+      <p style="margin:0; font-size:14px;" id="map-track-time">-</p>
+    </div>
+    
+    <div id="leaflet-map" style="flex:1; width:100%; background:#e6e3db;"></div>
+    <div id="map-overlay-msg" style="position:absolute; top:200px; left:0; width:100%; text-align:center; padding:20px; font-weight:800; font-size:18px; color:var(--gray); background:rgba(255,255,255,0.8); display:none; z-index:1000;">
+      Waiting for patient's live location...
+    </div>
+  </div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let ctRole = 'Guardian';
+
+  let appData = JSON.parse(localStorage.getItem('meca_data_v2')) || {
+    customImages: [],
+    medicine: [],
+    settings: {
+      aiEnabled: true,
+      difficulty: 'Medium'
+    }
+  };
+
+  
+  function handleNameSetup() {
+    const name = document.getElementById('setup-name').value.trim();
+    if(!name) return;
+    
+    appData.caretakerName = name;
+    localStorage.setItem('meca_data_v2', JSON.stringify(appData));
+    
+    document.getElementById('ct-greeting').textContent = getGreeting(appData.caretakerName);
+    document.getElementById('ct-name').textContent = appData.caretakerName;
+    go('dashboard');
+  }
+
+
+  function getGreeting(name) {
+    const hour = new Date().getHours();
+    let timeOfDay = 'morning';
+    if (hour >= 12 && hour < 17) timeOfDay = 'afternoon';
+    else if (hour >= 17 && hour < 21) timeOfDay = 'evening';
+    else if (hour >= 21 || hour < 4) timeOfDay = 'night';
+    return `Good ${timeOfDay},`;
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if(appData.caretakerName) {
+      document.getElementById('ct-greeting').textContent = getGreeting(appData.caretakerName);
+      document.getElementById('ct-name').textContent = appData.caretakerName;
+      // Skip role screen, go straight to dashboard
+      go('name-setup');
+    }
+  });
+
+
+  
+  
+  let mapInstanceDash = null;
+  let ptMarkerDash = null;
+
+  function initMapDash() {
+    if(!mapInstanceDash) {
+      mapInstanceDash = L.map('leaflet-map-dash').setView([0, 0], 2);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+      }).addTo(mapInstanceDash);
+    }
+  }
+
+  function updateMapUI() {
+    const pInfo = appData.patientInfo || {};
+    const loc = appData.liveLocation || { active: false };
+    
+    if(loc.active) {
+      document.getElementById('dash-track-status').textContent = 'LIVE';
+      document.getElementById('dash-track-status').style.color = '#d32f2f';
+      document.getElementById('dash-map-container').style.display = 'block';
+      document.getElementById('dash-map-off-msg').style.display = 'none';
+      
+      document.getElementById('dash-track-latlng').textContent = loc.lat.toFixed(4) + ', ' + loc.lng.toFixed(4);
+      document.getElementById('dash-track-time').textContent = loc.time;
+      
+      initMapDash();
+      setTimeout(()=>mapInstanceDash.invalidateSize(), 100);
+      
+      if(!ptMarkerDash) {
+        ptMarkerDash = L.marker([loc.lat, loc.lng]).addTo(mapInstanceDash);
+      } else {
+        ptMarkerDash.setLatLng([loc.lat, loc.lng]);
+      }
+      mapInstanceDash.setView([loc.lat, loc.lng], 15);
+      
+    } else {
+      document.getElementById('dash-track-status').textContent = 'LIVE TRACKING OFF';
+      document.getElementById('dash-track-status').style.color = 'var(--gray)';
+      document.getElementById('dash-map-container').style.display = 'none';
+      document.getElementById('dash-map-off-msg').style.display = 'block';
+    }
+  }
+  
+  // Refresh UI every 2 seconds to catch changes from the other tab
+  setInterval(() => {
+    appData = JSON.parse(localStorage.getItem('meca_data_v2')) || appData;
+    updateMapUI();
+  }, 2000);
+
+  
+  
+  function renderMedSummaryOnDashboard() {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const meds = appData.medicine || [];
+    let taken = 0, pending = 0;
+    const nowH = new Date().getHours();
+    const nowM = new Date().getMinutes();
+    meds.forEach(m => {
+      const hist = (m.history && m.history[todayStr]) || {};
+      (m.times || []).forEach(t => {
+        if (hist[t] === 'TAKEN') taken++;
+        else pending++;
+      });
+    });
+    const el = document.getElementById('dash-med-summary');
+    if (el) {
+      el.innerHTML = meds.length === 0 
+        ? 'No medicines scheduled.' 
+        : '✓ Taken: ' + taken + ' &nbsp; ⏰ Pending: ' + pending;
+    }
+  }
+
+  // Check for missed medications every minute
+  setInterval(() => {
+    const meds = appData.medicine || [];
+    if (meds.length === 0) return;
+    const now = new Date();
+    const timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+    const todayStr = now.toISOString().split('T')[0];
+    const patientName = (appData.patientInfo && appData.patientInfo.name) || 'Patient';
+    
+    meds.forEach(m => {
+      (m.times || []).forEach(t => {
+        if (t === timeStr) {
+          const hist = (m.history && m.history[todayStr]) || {};
+          if (!hist[t]) {
+            appData.notifications.unshift({
+              time: timeStr,
+              text: '💊 ' + patientName + "'s medication due: " + m.name + ' (' + m.dosage + ')',
+              type: 'due'
+            });
+            // reload if on medicine page
+            const active = document.querySelector('.screen.active');
+            if (active && active.id === 'screen-medicine') renderMedicine();
+          }
+        }
+      });
+    });
+  }, 60000);
+
+  function loadAccount() {
+    document.getElementById('acc-name').value = appData.caretakerName || '';
+    document.getElementById('acc-phone').value = appData.caretakerPhone || '';
+    document.getElementById('acc-email').value = appData.caretakerEmail || '';
+  }
+  function saveAccount() {
+    appData.caretakerName = document.getElementById('acc-name').value.trim();
+    appData.caretakerPhone = document.getElementById('acc-phone').value.trim();
+    appData.caretakerEmail = document.getElementById('acc-email').value.trim();
+    localStorage.setItem('meca_data_v2', JSON.stringify(appData));
+    
+    document.getElementById('ct-greeting').textContent = getGreeting(appData.caretakerName);
+    document.getElementById('ct-name').textContent = appData.caretakerName;
+    
+    showToast('Account saved');
+    go('dashboard');
+  }
+
+  function go(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById('screen-'+id).classList.add('active');
+    window.scrollTo(0,0);
+    if(id === 'memory-setup' || id === 'gallery') renderImages();
+    if(id === "patient") loadPatientProfile();
+    if(id === "docs-setup") renderDocs();
+
+    if(id === "map") {
+      setTimeout(() => {
+        initMap();
+        mapInstance.invalidateSize();
+        updateMapUI();
+      }, 100);
+    }
+
+    if(id === 'medicine') renderMedicine();
+    if(id === 'visits') { renderVisits(); }
+    if(id === 'dashboard') { updateMapUI(); renderMedSummaryOnDashboard(); }
+    if(id === 'analytics') renderAnalytics();
+  }
+
+  
+  // --- IndexedDB ---
+  const dbPromise = new Promise((resolve, reject) => {
+    const request = indexedDB.open('MemoryCareDB', 1);
+    request.onupgradeneeded = (e) => {
+      e.target.result.createObjectStore('documents');
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+
+  async function storeDocumentFile(id, fileBlob) {
+    const db = await dbPromise;
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('documents', 'readwrite');
+      const store = tx.objectStore('documents');
+      const req = store.put(fileBlob, id);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  }
+  
+  async function deleteDocumentFile(id) {
+    const db = await dbPromise;
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction('documents', 'readwrite');
+      const store = tx.objectStore('documents');
+      const req = store.delete(id);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  // --- Patient Profile ---
+  function loadPatientProfile() {
+    const p = appData.patientProfile || {};
+    document.getElementById('pt-name').value = p.name || '';
+    document.getElementById('pt-age').value = p.age || '';
+    document.getElementById('pt-addr').value = p.address || '';
+    document.getElementById('pt-city').value = p.city || '';
+    document.getElementById('pt-dist').value = p.district || '';
+    document.getElementById('pt-state').value = p.state || '';
+    
+    const e = appData.emergencyContacts || [];
+    const getC = (rel) => e.find(c => c.id === rel) || {};
+    
+    document.getElementById('ec-son-name').value = getC('son').name || '';
+    document.getElementById('ec-son-phone').value = getC('son').phone || '';
+    
+    document.getElementById('ec-wife-name').value = getC('wife').name || '';
+    document.getElementById('ec-wife-phone').value = getC('wife').phone || '';
+    
+    document.getElementById('ec-guard-name').value = getC('guard').name || '';
+    document.getElementById('ec-guard-phone').value = getC('guard').phone || '';
+    
+    document.getElementById('ec-house-name').value = getC('house').name || '';
+    document.getElementById('ec-house-phone').value = getC('house').phone || '';
+    
+    document.getElementById('ec-other-rel').value = getC('other').rel || '';
+    document.getElementById('ec-other-name').value = getC('other').name || '';
+    document.getElementById('ec-other-phone').value = getC('other').phone || '';
+  }
+  
+  function savePatientProfile() {
+    appData.patientProfile = {
+      name: document.getElementById('pt-name').value,
+      age: document.getElementById('pt-age').value,
+      address: document.getElementById('pt-addr').value,
+      city: document.getElementById('pt-city').value,
+      district: document.getElementById('pt-dist').value,
+      state: document.getElementById('pt-state').value
+    };
+    
+    appData.emergencyContacts = [
+      { id: 'son', rel: 'Son', name: document.getElementById('ec-son-name').value, phone: document.getElementById('ec-son-phone').value },
+      { id: 'wife', rel: 'Wife', name: document.getElementById('ec-wife-name').value, phone: document.getElementById('ec-wife-phone').value },
+      { id: 'guard', rel: 'Guardian', name: document.getElementById('ec-guard-name').value, phone: document.getElementById('ec-guard-phone').value },
+      { id: 'house', rel: 'House Contact', name: document.getElementById('ec-house-name').value, phone: document.getElementById('ec-house-phone').value },
+      { id: 'other', rel: document.getElementById('ec-other-rel').value || 'Other', name: document.getElementById('ec-other-name').value, phone: document.getElementById('ec-other-phone').value }
+    ];
+    
+    saveData();
+    showToast("Patient Profile Saved");
+  }
+
+  // --- Docs & Prescriptions ---
+  function saveRx() {
+    const med = document.getElementById('rx-name').value.trim();
+    if(!med) { showToast('Medicine name required'); return; }
+    
+    if(!appData.prescriptions) appData.prescriptions = [];
+    appData.prescriptions.push({
+      id: Date.now().toString(),
+      med: med,
+      dose: document.getElementById('rx-dose').value,
+      time: document.getElementById('rx-time').value,
+      doctor: document.getElementById('rx-doc').value,
+      date: new Date().toLocaleDateString()
+    });
+    
+    saveData();
+    
+    document.getElementById('rx-name').value = '';
+    document.getElementById('rx-dose').value = '';
+    document.getElementById('rx-time').value = '';
+    document.getElementById('rx-doc').value = '';
+    
+    renderDocs();
+    showToast("Prescription Added");
+  }
+
+  function deleteRx(id) {
+    appData.prescriptions = appData.prescriptions.filter(r => r.id !== id);
+    saveData();
+    renderDocs();
+    showToast("Deleted");
+  }
+
+  async function uploadDoc(e) {
+    const file = e.target.files[0];
+    if(!file) return;
+    
+    const id = 'doc_' + Date.now();
+    try {
+      showToast("Uploading...");
+      await storeDocumentFile(id, file);
+      
+      if(!appData.documents) appData.documents = [];
+      appData.documents.push({
+        id: id,
+        name: file.name,
+        type: file.type,
+        date: new Date().toLocaleDateString()
+      });
+      saveData();
+      renderDocs();
+      showToast("Document Uploaded");
+    } catch(err) {
+      console.error(err);
+      showToast("Upload failed");
+    }
+  }
+
+  async function deleteDoc(id) {
+    if(confirm('Delete document?')) {
+      appData.documents = appData.documents.filter(d => d.id !== id);
+      saveData();
+      try {
+        await deleteDocumentFile(id);
+      } catch(e){}
+      renderDocs();
+      showToast("Deleted");
+    }
+  }
+
+  function renderDocs() {
+    const rxList = document.getElementById('rx-list');
+    rxList.innerHTML = '';
+    (appData.prescriptions || []).forEach(rx => {
+      rxList.innerHTML += `
+        <div class="img-item" style="margin-bottom:8px;">
+          <div class="info">
+            <h4 style="margin:0; font-size:15px;">${rx.med}</h4>
+            <p style="margin:0; font-size:12px; color:var(--gray);">${rx.dose} at ${rx.time}</p>
+          </div>
+          <div class="actions">
+            <button class="delete" onclick="deleteRx('${rx.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+        </div>`;
+    });
+    
+    const dList = document.getElementById('ct-doc-list');
+    dList.innerHTML = '';
+    (appData.documents || []).forEach(d => {
+      dList.innerHTML += `
+        <div class="img-item" style="margin-bottom:8px;">
+          <div class="info">
+            <h4 style="margin:0; font-size:15px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">${d.name}</h4>
+            <p style="margin:0; font-size:12px; color:var(--gray);">${d.date}</p>
+          </div>
+          <div class="actions">
+            <button class="delete" onclick="deleteDoc('${d.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+          </div>
+        </div>`;
+    });
+  }
+
+  function showToast(msg){
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(()=>t.classList.remove('show'), 1800);
+  }
+
+  function setRole(role) {
+    ctRole = role;
+    document.getElementById('ct-role-display').textContent = role;
+    document.getElementById('pt-role-label').textContent = role;
+  }
+
+  function saveData() {
+    localStorage.setItem('meca_data_v2', JSON.stringify(appData));
+  }
+
+  // --- Image Management ---
+  function triggerAddImage() {
+    if (appData.customImages.length >= 10) {
+      showToast("Maximum of 10 personalized game images reached.");
+      return;
+    }
+    document.getElementById('new-img-name').value = '';
+    go('add-image');
+  }
+
+  function saveNewImage() {
+    const name = document.getElementById('new-img-name').value.trim();
+    if (!name) { showToast("Please enter a name"); return; }
+    
+    // Use a placeholder demo image for the prototype
+    const demoImg = 'https://images.unsplash.com/photo-1544717302-de2939b7ef71?w=500&q=80';
+    
+    appData.customImages.push({ img: demoImg, name: name });
+    saveData();
+    showToast("Image saved");
+    go('memory-setup');
+  }
+
+  function deleteImage(idx) {
+    if (confirm("Delete this image?")) {
+      appData.customImages.splice(idx, 1);
+      saveData();
+      renderImages();
+      showToast("Image deleted");
+    }
+  }
+
+  function renderImages() {
+    const list = document.getElementById('ct-img-list');
+    const galList = document.getElementById('ct-gallery-list');
+    list.innerHTML = '';
+    galList.innerHTML = '';
+    
+    document.getElementById('img-count-label').textContent = appData.customImages.length;
+    
+    if(appData.customImages.length === 10) {
+      document.getElementById('upload-box').style.opacity = '0.5';
+      document.getElementById('upload-box').style.cursor = 'not-allowed';
+    } else {
+      document.getElementById('upload-box').style.opacity = '1';
+      document.getElementById('upload-box').style.cursor = 'pointer';
+    }
+
+    if (appData.customImages.length === 0) {
+      list.innerHTML = '<p style="color:var(--gray); text-align:center;">No images added yet.</p>';
+      galList.innerHTML = '<p style="color:var(--gray); text-align:center;">No images in gallery.</p>';
+      return;
+    }
+
+    appData.customImages.forEach((img, idx) => {
+      const html = \`
+        <div class="img-item">
+          <img src="\${img.img}">
+          <div class="info"><h4>\${img.name}</h4></div>
+          <div class="actions">
+            <button onclick="editImage(\${idx})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button class="delete" onclick="deleteImage(\${idx})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
+          </div>
+        </div>\`;
+      list.innerHTML += html;
+      galList.innerHTML += html;
+    });
+  }
+  
+  function editImage(idx) {
+    const newName = prompt("Enter new name:", appData.customImages[idx].name);
+    if(newName && newName.trim() !== '') {
+      appData.customImages[idx].name = newName.trim();
+      saveData();
+      renderImages();
+    }
+  }
+
+  
+  function updateFrequencyTimes() {
+    const freq = parseInt(document.getElementById('med-frequency').value);
+    const section = document.getElementById('med-times-section');
+    const timeSlots = [
+      { id: 'time-1', label: freq === 1 ? 'Night' : 'Morning', default: '06:00' },
+      { id: 'time-2', label: 'Afternoon', default: '13:00' },
+      { id: 'time-3', label: 'Night', default: '21:00' }
+    ];
+    if (freq === 1) {
+      section.innerHTML = `
+        <div class="form-field"><label>Night</label><input type="time" id="med-time-1" value="21:00"></div>
+      `;
+    } else if (freq === 2) {
+      section.innerHTML = `
+        <div class="form-field"><label>Afternoon</label><input type="time" id="med-time-1" value="13:00"></div>
+        <div class="form-field"><label>Night</label><input type="time" id="med-time-2" value="21:00"></div>
+      `;
+    } else {
+      section.innerHTML = `
+        <div class="form-field"><label>Morning</label><input type="time" id="med-time-1" value="06:00"></div>
+        <div class="form-field"><label>Afternoon</label><input type="time" id="med-time-2" value="13:00"></div>
+        <div class="form-field"><label>Night</label><input type="time" id="med-time-3" value="21:00"></div>
+      `;
+    }
+  }
+
+  function addMedicine() {
+    const name = document.getElementById('med-name').value.trim();
+    const type = document.getElementById('med-type').value;
+    const dosage = document.getElementById('med-dosage').value.trim();
+    const freq = parseInt(document.getElementById('med-frequency').value);
+    if (!name || !dosage) { showToast('Please fill in all fields'); return; }
+    
+    const times = [];
+    for (let i = 1; i <= freq; i++) {
+      const el = document.getElementById('med-time-' + i);
+      if (el) times.push(el.value);
+    }
+    
+    const med = {
+      id: Date.now(),
+      name, type, dosage,
+      frequency: freq,
+      times,
+      history: {}
+    };
+    appData.medicine.push(med);
+    saveData();
+    
+    // Clear form
+    document.getElementById('med-name').value = '';
+    document.getElementById('med-dosage').value = '';
+    
+    renderMedicine();
+    showToast('Medicine added');
+    
+    // Add notification
+    const patientName = appData.patientInfo && appData.patientInfo.name ? appData.patientInfo.name : 'Patient';
+    appData.notifications.unshift({
+      time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+      text: '💊 Medicine added: ' + name + ' (' + freq + 'x daily)',
+      type: 'added'
+    });
+    saveData();
+  }
+
+  function deleteMed(idx) {
+    appData.medicine.splice(idx, 1);
+    saveData();
+    renderMedicine();
+    showToast('Medicine removed');
+  }
+
+  function renderMedicine() {
+    const list = document.getElementById('med-list');
+    if (!list) return;
+    list.innerHTML = '';
+    
+    const todayStr = new Date().toISOString().split('T')[0];
+    let totalTaken = 0, totalPending = 0, totalMissed = 0;
+    const nowH = new Date().getHours();
+    const nowM = new Date().getMinutes();
+    
+    if (appData.medicine.length === 0) {
+      list.innerHTML = '<p style="color:var(--gray); text-align:center;">No medicines added yet.</p>';
+    } else {
+      const patientName = (appData.patientInfo && appData.patientInfo.name) || 'Patient';
+      appData.medicine.forEach((m, idx) => {
+        const hist = (m.history && m.history[todayStr]) || {};
+        let html = `<div class="card" style="margin-bottom:16px; padding:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+            <div>
+              <h3 style="margin:0 0 4px;">${m.name}</h3>
+              <p style="margin:0; color:var(--gray); font-size:14px;">${m.type} · ${m.dosage} · ${m.frequency}x daily</p>
+            </div>
+            <button onclick="deleteMed(${idx})" style="background:none; border:none; color:var(--gray); cursor:pointer; font-size:18px;">✕</button>
+          </div>`;
+        
+        (m.times || []).forEach(t => {
+          const status = hist[t] || 'PENDING';
+          // Check if missed (time has passed)
+          const [th, tm] = t.split(':').map(Number);
+          const isPast = (nowH > th) || (nowH === th && nowM > tm + 5);
+          const displayStatus = status === 'TAKEN' ? 'TAKEN' : (isPast ? 'MISSED' : 'PENDING');
+          
+          if (displayStatus === 'TAKEN') totalTaken++;
+          else if (displayStatus === 'MISSED') totalMissed++;
+          else totalPending++;
+          
+          const color = displayStatus === 'TAKEN' ? '#2e7d32' : displayStatus === 'MISSED' ? '#c62828' : '#f57f17';
+          const icon = displayStatus === 'TAKEN' ? '✓' : displayStatus === 'MISSED' ? '⚠' : '⏰';
+          
+          html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-top:1px solid #eee;">
+            <span style="font-weight:700; font-size:14px;">${t}</span>
+            <span style="font-weight:800; color:${color}; font-size:14px;">${icon} ${displayStatus}</span>
+          </div>`;
+        });
+        
+        html += '</div>';
+        list.innerHTML += html;
+      });
+    }
+    
+    // Update summary
+    const takenEl = document.getElementById('ct-stat-taken');
+    const pendingEl = document.getElementById('ct-stat-pending');
+    const missedEl = document.getElementById('ct-stat-missed');
+    if (takenEl) takenEl.textContent = totalTaken;
+    if (pendingEl) pendingEl.textContent = totalPending;
+    if (missedEl) missedEl.textContent = totalMissed;
+    
+    // Render notification history
+    renderNotifHistory();
+  }
+
+  function renderNotifHistory() {
+    const notifList = document.getElementById('ct-notif-list');
+    if (!notifList) return;
+    const notifs = appData.notifications || [];
+    if (notifs.length === 0) {
+      notifList.innerHTML = '<p style="color:var(--gray);">No notifications yet.</p>';
+      return;
+    }
+    notifList.innerHTML = notifs.slice(0,20).map(n => 
+      `<div style="padding:8px 0; border-bottom:1px solid #eee; font-size:13px;">
+        <span style="color:var(--gray);${n.type==='taken'?'color:#2e7d32':n.type==='missed'?'color:#c62828':''}">${n.text}</span>
+        <span style="float:right; color:var(--gray);">${n.time}</span>
+      </div>`
+    ).join('');
+  }
+
+  // ====== VISITS MANAGEMENT ======
+  function updateVisitForm() {
+    const kind = document.getElementById('visit-kind').value;
+    document.getElementById('visit-visitor-fields').style.display = kind === 'visitor' ? 'block' : 'none';
+    document.getElementById('visit-doctor-fields').style.display = kind === 'doctor' ? 'block' : 'none';
+  }
+
+  function addVisit() {
+    const kind = document.getElementById('visit-kind').value;
+    const name = document.getElementById('visit-name').value.trim();
+    const date = document.getElementById('visit-date').value;
+    const time = document.getElementById('visit-time').value;
+    const purpose = document.getElementById('visit-purpose').value.trim();
+    if (!name || !date || !time) { showToast('Please fill required fields'); return; }
+    
+    const visit = { id: Date.now(), kind, name, date, time, purpose };
+    if (kind === 'visitor') {
+      visit.relation = document.getElementById('visit-relation').value.trim();
+    } else {
+      visit.specialization = document.getElementById('visit-specialization').value.trim();
+      visit.location = document.getElementById('visit-location').value.trim();
+    }
+    
+    if (!appData.visits) appData.visits = [];
+    appData.visits.push(visit);
+    // Sort by date+time
+    appData.visits.sort((a,b) => (a.date+a.time).localeCompare(b.date+b.time));
+    saveData();
+    renderVisits();
+    
+    // Clear form
+    document.getElementById('visit-name').value = '';
+    document.getElementById('visit-date').value = '';
+    document.getElementById('visit-time').value = '';
+    document.getElementById('visit-purpose').value = '';
+    showToast('Visit added');
+  }
+
+  function deleteVisit(idx) {
+    appData.visits.splice(idx, 1);
+    saveData();
+    renderVisits();
+  }
+
+  function renderVisits() {
+    const list = document.getElementById('ct-visits-list');
+    if (!list) return;
+    const visits = appData.visits || [];
+    if (visits.length === 0) {
+      list.innerHTML = '<p style="color:var(--gray); text-align:center;">No visits or appointments added.</p>';
+      return;
+    }
+    list.innerHTML = visits.map((v, idx) => {
+      const icon = v.kind === 'doctor' ? '🏥' : '👋';
+      return `<div class="card" style="margin-bottom:12px; padding:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div style="display:flex; gap:10px; align-items:flex-start; flex:1;">
+            <div style="font-size:28px;">${icon}</div>
+            <div>
+              <h4 style="margin:0 0 2px;">${v.name}</h4>
+              <p style="margin:0; font-size:13px; color:var(--gray);">${v.kind === 'doctor' ? (v.specialization||'Doctor') : (v.relation||'Visitor')}</p>
+              <p style="margin:4px 0 0; font-size:14px;"><strong>${v.date}</strong> at <strong>${v.time}</strong></p>
+              ${v.purpose ? `<p style="margin:4px 0 0; font-size:13px; color:var(--gray);">${v.purpose}</p>` : ''}
+            </div>
+          </div>
+          <button onclick="deleteVisit(${idx})" style="background:none; border:none; color:var(--gray); cursor:pointer;">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+
+  // --- Analytics ---
+  function renderAnalytics() {
+    document.getElementById('stat-images').textContent = appData.customImages.length;
+    document.getElementById('stat-meds').textContent = appData.medicine.length;
+  }
+
+  // --- REAL-TIME MQTT SYNC (CROSS-DEVICE PROTOTYPE) ---
+  let mqttClient = null;
+  function initMqtt() {
+    if(!mqttClient && typeof mqtt !== 'undefined') {
+      mqttClient = mqtt.connect('wss://test.mosquitto.org:8081');
+      mqttClient.on('connect', () => {
+        console.log('Caretaker MQTT Connected to PATIENT_DEMO_001');
+        mqttClient.subscribe('smriti/hackathon/PATIENT_DEMO_001/location');
+      });
+      mqttClient.on('message', (topic, message) => {
+        try {
+          const locData = JSON.parse(message.toString());
+          appData.liveLocation = locData;
+          saveApp(); // sync local state
+          
+          if(document.getElementById('screen-dashboard').classList.contains('active')) {
+            updateMapUI();
+          }
+        } catch(e) {}
+      });
+    }
+  }
+
+  // Hook into initialization to start MQTT
+  window.addEventListener('load', initMqtt);
+
+
+  // LocalStorage cross-tab sync (Fallback for same-device demo)
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'meca_data_v2' && e.newValue) {
+      try {
+        appData = JSON.parse(e.newValue);
+        if (document.getElementById('screen-dashboard').classList.contains('active')) {
+          updateMapUI();
+          renderMedSummaryOnDashboard();
+        }
+      } catch(err) {}
+    }
+  });
+
+</script>
+</body>
+</html>

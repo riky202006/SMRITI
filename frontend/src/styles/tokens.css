@@ -1,0 +1,78 @@
+:root {
+  /* Colors from DESIGN.md */
+  --primary: #005e53;
+  --on-primary: #ffffff;
+  --primary-container: #00796b;
+  --on-primary-container: #a1feec;
+  --primary-fixed: #97f3e2;
+  --primary-fixed-dim: #7ad7c6;
+
+  --secondary: #875200;
+  --on-secondary: #ffffff;
+  --secondary-container: #f89c00;
+  --on-secondary-container: #623a00;
+
+  --tertiary: #54534e;
+  --on-tertiary: #ffffff;
+  --tertiary-container: #6c6b66;
+
+  --surface: #f9f9f8;
+  --surface-dim: #dadad8;
+  --surface-bright: #f9f9f8;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f3f4f2;
+  --surface-container: #eeeeec;
+  --surface-container-high: #e8e8e6;
+  --surface-container-highest: #e2e3e1;
+
+  --on-surface: #1a1c1b;
+  --on-surface-variant: #3e4946;
+  --outline: #6e7a76;
+  --outline-variant: #bdc9c5;
+
+  --background: #f9f9f8;
+  --on-background: #1a1c1b;
+
+  --error: #ba1a1a;
+  --on-error: #ffffff;
+  --error-container: #ffdad6;
+  --on-error-container: #93000a;
+
+  /* Custom Companion Palettes */
+  --teal-dark: #0b5d52;
+  --teal-darker: #084a42;
+  --teal-mid: #12786b;
+  --mint: #8fe0c9;
+  --mint-soft: #d4f2e8;
+  --cream: #f7f4ee;
+  --white: #ffffff;
+  --gray: #707773;
+  --gray-light: #f0ece3;
+  --orange: #e67e22;
+  --red: #d32f2f;
+  --ink: #1a2b27;
+
+  /* Shadows */
+  --shadow-sm: 0 4px 12px rgba(0, 121, 107, 0.06);
+  --shadow-md: 0 12px 30px rgba(11, 93, 82, 0.08);
+  --shadow-lg: 0 16px 40px rgba(11, 93, 82, 0.12);
+
+  /* Radii */
+  --radius-sm: 0.5rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 2rem;
+  --radius-pill: 9999px;
+
+  /* Layout & Spacing */
+  --gutter: 24px;
+  --margin-mobile: 24px;
+  --stack-spacing: 16px;
+  --section-spacing: 32px;
+  --touch-min: 48px;
+  --touch-target: 64px;
+
+  /* Typography */
+  --font-headline: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-body: 'Atkinson Hyperlegible Next', 'Segoe UI', system-ui, sans-serif;
+}
