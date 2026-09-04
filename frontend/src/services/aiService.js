@@ -28,7 +28,21 @@ export async function sendPromptToAssistant({ prompt, context = {} }) {
     });
 
     if (error) {
-      // Handle known Edge Function HTTP status codes cleanly
+      console.error('[aiService] Edge Function invoke error:', error);
+      let errorDetails = error.message || 'Unable to connect to SMRITI Assistant.';
+
+      // Attempt to parse JSON error details sent from Edge Function
+      if (error.context && typeof error.context.json === 'function') {
+        try {
+          const errBody = await error.context.json();
+          if (errBody?.detail) {
+            errorDetails = `${errBody.error || 'AI Assistant Error'}: ${errBody.detail}`;
+          } else if (errBody?.error) {
+            errorDetails = errBody.error;
+          }
+        } catch {}
+      }
+
       const status = error.context?.status || error.status;
       if (status === 401) {
         return { success: false, error: 'Your session has expired. Please sign in again.' };
@@ -42,17 +56,18 @@ export async function sendPromptToAssistant({ prompt, context = {} }) {
       if (status === 503) {
         return {
           success: false,
-          error: 'AI Assistant service is currently undergoing maintenance. Please try again soon.',
+          error: errorDetails || 'AI Assistant service is currently unconfigured. Please configure GEMINI_API_KEY in Edge Function secrets.',
         };
       }
+
       return {
         success: false,
-        error: error.message || 'Unable to connect to SMRITI Assistant. Please try again.',
+        error: errorDetails,
       };
     }
 
     if (data?.error) {
-      return { success: false, error: data.error };
+      return { success: false, error: data.detail ? `${data.error} (${data.detail})` : data.error };
     }
 
     return {

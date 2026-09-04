@@ -21,6 +21,7 @@ export default function AccountPage() {
   const [copiedCode, setCopiedCode] = useState(false);
 
   const patientId = patientRecord?.id || '';
+  const connectionCode = patientRecord?.connection_code || patientId;
 
   const nerLanguages = [
     { label: 'English', code: 'en' },
@@ -54,8 +55,8 @@ export default function AccountPage() {
   }, [patientId]);
 
   const handleCopyCode = () => {
-    if (!patientId) return;
-    navigator.clipboard.writeText(patientId);
+    if (!connectionCode) return;
+    navigator.clipboard.writeText(connectionCode);
     setCopiedCode(true);
     showToast('Patient Connection Code copied to clipboard!');
     setTimeout(() => setCopiedCode(false), 3000);
@@ -101,35 +102,36 @@ export default function AccountPage() {
 
         {/* Patient Connection Code Card */}
         <Card style={{ marginBottom: 20, backgroundColor: 'var(--mint-soft)', border: '1.5px solid var(--primary)' }}>
-          <h3 className="label-lg" style={{ color: 'var(--primary)', marginBottom: 6 }}>
+          <h3 className="label-lg" style={{ color: 'var(--primary)', marginBottom: 6, letterSpacing: '0.5px' }}>
             PATIENT CONNECTION CODE
           </h3>
           <p className="body-md" style={{ color: 'var(--on-surface)', fontSize: '14px', marginBottom: 12 }}>
-            Share this code with your caretaker or family member to link accounts:
+            Share this short code with your caretaker or family member to link accounts:
           </p>
 
           <div
             style={{
-              padding: '12px 14px',
+              padding: '14px 16px',
               backgroundColor: 'var(--surface-container-lowest)',
               borderRadius: 'var(--radius-md)',
-              border: '1px dashed var(--primary)',
+              border: '2px dashed var(--primary)',
               fontFamily: 'monospace',
-              fontSize: '14px',
-              wordBreak: 'break-all',
-              color: 'var(--ink)',
-              fontWeight: 700,
+              fontSize: '20px',
+              letterSpacing: '2px',
+              color: 'var(--primary)',
+              fontWeight: 800,
               marginBottom: 12,
               textAlign: 'center',
+              userSelect: 'all',
             }}
           >
-            {patientId || 'Generating connection code...'}
+            {connectionCode || 'Generating connection code...'}
           </div>
 
           <Button
             variant="primary"
             onClick={handleCopyCode}
-            disabled={!patientId}
+            disabled={!connectionCode}
             style={{ width: '100%', fontSize: '15px' }}
           >
             {copiedCode ? '✓ Copied to Clipboard' : '📋 Copy Connection Code'}

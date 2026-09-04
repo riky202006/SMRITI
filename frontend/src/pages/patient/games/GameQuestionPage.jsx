@@ -197,7 +197,7 @@ export default function GameQuestionPage() {
         };
 
         if (patientId) {
-          await saveMemorySession({
+          const saveRes = await saveMemorySession({
             patientId,
             totalRounds,
             correctCount: newCorrect,
@@ -205,6 +205,9 @@ export default function GameQuestionPage() {
             score: newScore,
             summary: summaryText,
           });
+          if (saveRes?.data?.id) {
+            report.sessionId = saveRes.data.id;
+          }
         }
 
         navigate('/patient/games/result', { state: { report } });

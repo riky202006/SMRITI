@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabase';
+import { generateSmritiCode } from '@/utils/codeGenerator';
 
 /**
  * Sign up a new user, create their profile record, and if patient, create patients table entry.
@@ -88,13 +89,23 @@ export async function signUp({ email, password, fullName, role = 'patient', phon
 
       if (existingPatient) {
         patientRecord = existingPatient;
+        if (!patientRecord.connection_code) {
+          const generatedCode = generateSmritiCode();
+          patientRecord.connection_code = generatedCode;
+          supabase
+            .from('patients')
+            .update({ connection_code: generatedCode })
+            .eq('id', patientRecord.id)
+            .then();
+        }
       } else {
+        const generatedCode = generateSmritiCode();
         const { data: newPRec } = await supabase
           .from('patients')
-          .upsert({ profile_id: user.id }, { onConflict: 'profile_id' })
+          .upsert({ profile_id: user.id, connection_code: generatedCode }, { onConflict: 'profile_id' })
           .select()
           .maybeSingle();
-        patientRecord = newPRec;
+        patientRecord = newPRec || { profile_id: user.id, connection_code: generatedCode };
       }
     }
   }
@@ -157,12 +168,32 @@ export async function signIn({ email, password }) {
   // If patient, ensure patient record
   let patientRecord = null;
   if (profile?.role === 'patient') {
-    const { data: pRec } = await supabase
+    const { data: existingPatient } = await supabase
       .from('patients')
-      .upsert({ profile_id: data.user.id }, { onConflict: 'profile_id' })
-      .select()
+      .select('*')
+      .eq('profile_id', data.user.id)
       .maybeSingle();
-    patientRecord = pRec;
+
+    if (existingPatient) {
+      patientRecord = existingPatient;
+      if (!patientRecord.connection_code) {
+        const generatedCode = generateSmritiCode();
+        patientRecord.connection_code = generatedCode;
+        supabase
+          .from('patients')
+          .update({ connection_code: generatedCode })
+          .eq('id', patientRecord.id)
+          .then();
+      }
+    } else {
+      const generatedCode = generateSmritiCode();
+      const { data: pRec } = await supabase
+        .from('patients')
+        .upsert({ profile_id: data.user.id, connection_code: generatedCode }, { onConflict: 'profile_id' })
+        .select()
+        .maybeSingle();
+      patientRecord = pRec;
+    }
   }
 
   return {

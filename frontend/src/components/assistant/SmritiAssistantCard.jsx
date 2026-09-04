@@ -47,10 +47,12 @@ export default function SmritiAssistantCard({ context = {} }) {
       if (res.success && res.reply) {
         setAiResponse(res.reply);
       } else {
-        setErrorMsg("I'm having trouble connecting right now. You can continue using SMRITI normally.");
+        console.error('[SmritiAssistantCard] Assistant response failure:', res.error);
+        setErrorMsg(res.error || "I'm having trouble connecting right now. You can continue using SMRITI normally.");
       }
-    } catch {
-      setErrorMsg("I'm having trouble connecting right now. You can continue using SMRITI normally.");
+    } catch (err) {
+      console.error('[SmritiAssistantCard] Exception:', err);
+      setErrorMsg(err?.message || "I'm having trouble connecting right now. You can continue using SMRITI normally.");
     } finally {
       setLoading(false);
     }

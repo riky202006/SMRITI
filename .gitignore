@@ -57,3 +57,9 @@ coverage/
 # Temporary / Scratch files
 *.tmp
 *_temp.html
+
+# Supabase local temporary files
+frontend/supabase/.temp/
+
+# Supabase local temporary files
+frontend/supabase/.temp/

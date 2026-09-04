@@ -18,13 +18,14 @@ export async function saveMemorySession({
   const safeTotalRounds = Math.max(0, parseInt(totalRounds, 10) || 0);
   const safeCorrectCount = Math.max(0, Math.min(safeTotalRounds, parseInt(correctCount, 10) || 0));
 
-  // Compute accuracy consistently: (correctCount / totalRounds) * 100
-  const computedAccuracy =
+  // Compute accuracy consistently and strictly clamp between 0 and 100
+  const rawAccuracy =
     accuracy !== null && !isNaN(accuracy)
       ? Number(Number(accuracy).toFixed(2))
       : safeTotalRounds > 0
       ? Number(((safeCorrectCount / safeTotalRounds) * 100).toFixed(2))
       : 0;
+  const computedAccuracy = Math.min(100, Math.max(0, rawAccuracy));
 
   const computedScore =
     score !== null && !isNaN(score)
@@ -95,8 +96,14 @@ export async function getPatientStats(patientId) {
   const totalSessions = data.length;
   const totalScore = data.reduce((sum, s) => sum + (Number(s.score) || 0), 0);
   const totalCorrect = data.reduce((sum, s) => sum + (Number(s.correct_count) || 0), 0);
-  const avgAccuracy = Math.round(
-    data.reduce((sum, s) => sum + (Number(s.accuracy) || 0), 0) / totalSessions
+  const avgAccuracy = Math.min(
+    100,
+    Math.max(
+      0,
+      Math.round(
+        data.reduce((sum, s) => sum + Math.min(100, Math.max(0, Number(s.accuracy) || 0)), 0) / totalSessions
+      )
+    )
   );
 
   return {
@@ -108,6 +115,50 @@ export async function getPatientStats(patientId) {
     },
     error: null,
   };
+}
+
+/**
+ * Update an existing memory session (e.g. to attach AI reflection).
+ */
+export async function updateMemorySession(sessionId, updates) {
+  if (!isSupabaseConfigured || !sessionId) {
+    return { data: null, error: new Error('Missing session ID or configuration.') };
+  }
+
+  const { data, error } = await supabase
+    .from('memory_sessions')
+    .update(updates)
+    .eq('id', sessionId)
+    .select()
+    .single();
+
+  return { data, error };
+}
+
+/**
+ * Attach or sync AI Reflection / Report to the memory session so connected caretakers see it.
+ */
+export async function attachAiReflectionToSession({ sessionId, patientId, aiReflection, baseSummary }) {
+  if (!isSupabaseConfigured || !aiReflection) return { data: null, error: null };
+
+  const cleanAi = aiReflection.trim();
+  const cleanBase = (baseSummary || '').split('\n\n[AI Report]:')[0].trim();
+  const formattedSummary = cleanBase
+    ? `${cleanBase}\n\n[AI Report]: ${cleanAi}`
+    : `[AI Report]: ${cleanAi}`;
+
+  if (sessionId) {
+    return await updateMemorySession(sessionId, { summary: formattedSummary });
+  }
+
+  if (patientId) {
+    const { data: latestSessions } = await getMemorySessions(patientId, 1);
+    if (latestSessions && latestSessions.length > 0) {
+      return await updateMemorySession(latestSessions[0].id, { summary: formattedSummary });
+    }
+  }
+
+  return { data: null, error: new Error('Unable to find session to attach AI report.') };
 }
 
 /**
@@ -136,3 +187,4 @@ export function subscribeToMemorySessions(patientId, callback) {
     },
   };
 }
+

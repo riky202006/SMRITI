@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 CREATE TABLE IF NOT EXISTS public.patients (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     profile_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    connection_code TEXT UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
     CONSTRAINT unique_patient_profile UNIQUE (profile_id)
 );
@@ -177,6 +178,7 @@ CREATE TABLE IF NOT EXISTS public.patient_settings (
 -- INDEXES FOR PERFORMANCE
 -- ==============================================================================
 CREATE INDEX IF NOT EXISTS idx_patients_profile_id ON public.patients(profile_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_connection_code ON public.patients(connection_code);
 CREATE INDEX IF NOT EXISTS idx_caretaker_patient_caretaker ON public.caretaker_patient(caretaker_id);
 CREATE INDEX IF NOT EXISTS idx_caretaker_patient_patient ON public.caretaker_patient(patient_id);
 CREATE INDEX IF NOT EXISTS idx_medications_patient ON public.medications(patient_id);
@@ -191,6 +193,41 @@ CREATE INDEX IF NOT EXISTS idx_gallery_images_patient ON public.gallery_images(p
 CREATE INDEX IF NOT EXISTS idx_appointments_patient ON public.appointments(patient_id);
 CREATE INDEX IF NOT EXISTS idx_appointments_date ON public.appointments(date);
 CREATE INDEX IF NOT EXISTS idx_emergency_contacts_patient ON public.emergency_contacts(patient_id);
+
+-- ==============================================================================
+-- SMRITI CONNECTION CODE GENERATOR (Short, Human-Friendly e.g. SMRITI-X7K9P2)
+-- ==============================================================================
+CREATE OR REPLACE FUNCTION public.generate_smriti_connection_code()
+RETURNS TEXT
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    chars TEXT := '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+    result TEXT := 'SMRITI-';
+    i INTEGER;
+    code_exists BOOLEAN;
+BEGIN
+    LOOP
+        result := 'SMRITI-';
+        FOR i IN 1..6 LOOP
+            result := result || substr(chars, floor(random() * length(chars) + 1)::integer, 1);
+        END LOOP;
+
+        SELECT EXISTS(SELECT 1 FROM public.patients WHERE connection_code = result) INTO code_exists;
+        IF NOT code_exists THEN
+            RETURN result;
+        END IF;
+    END LOOP;
+END;
+$$;
+
+-- Default connection_code generation
+ALTER TABLE public.patients ALTER COLUMN connection_code SET DEFAULT public.generate_smriti_connection_code();
+
+-- Ensure all existing patient records have a SMRITI connection code
+UPDATE public.patients
+SET connection_code = public.generate_smriti_connection_code()
+WHERE connection_code IS NULL;
 
 -- ==============================================================================
 -- SECURITY DEFINER HELPER FUNCTIONS (Bypasses recursion in RLS policies)
@@ -280,11 +317,12 @@ BEGIN
         role = EXCLUDED.role,
         phone = EXCLUDED.phone;
 
-    -- 2. If role is patient, automatically insert into public.patients
+    -- 2. If role is patient, automatically insert into public.patients with connection_code
     IF user_role = 'patient' THEN
-        INSERT INTO public.patients (profile_id)
-        VALUES (NEW.id)
-        ON CONFLICT (profile_id) DO NOTHING;
+        INSERT INTO public.patients (profile_id, connection_code)
+        VALUES (NEW.id, public.generate_smriti_connection_code())
+        ON CONFLICT (profile_id) DO UPDATE SET
+            connection_code = COALESCE(public.patients.connection_code, EXCLUDED.connection_code);
     END IF;
 
     RETURN NEW;
@@ -301,42 +339,75 @@ CREATE TRIGGER on_auth_user_created
 -- SECURE PATIENT-CARETAKER LINKING RPC FUNCTION
 -- ==============================================================================
 
-CREATE OR REPLACE FUNCTION public.connect_patient(p_patient_id UUID, p_relationship TEXT DEFAULT 'Caregiver')
+CREATE OR REPLACE FUNCTION public.connect_patient(
+    p_code TEXT DEFAULT NULL,
+    p_relationship TEXT DEFAULT 'Caregiver',
+    p_patient_id UUID DEFAULT NULL
+)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
+    v_input TEXT;
+    v_clean_code TEXT;
+    v_caretaker_role TEXT;
     v_patient_rec RECORD;
     v_profile_rec RECORD;
     v_link_rec RECORD;
+    v_is_uuid BOOLEAN;
 BEGIN
+    -- 1. Authentication check
     IF auth.uid() IS NULL THEN
         RAISE EXCEPTION 'Not authenticated';
     END IF;
 
-    SELECT * INTO v_patient_rec FROM public.patients WHERE id = p_patient_id;
+    -- 2. Authorize caller is a Caretaker
+    SELECT role INTO v_caretaker_role FROM public.profiles WHERE id = auth.uid();
+    IF v_caretaker_role IS NULL OR v_caretaker_role <> 'caretaker' THEN
+        RAISE EXCEPTION 'Only users with the Caretaker role can link patients.';
+    END IF;
+
+    -- 3. Resolve connection code / input
+    v_input := COALESCE(p_code, p_patient_id::TEXT);
+    IF v_input IS NULL OR TRIM(v_input) = '' THEN
+        RAISE EXCEPTION 'Connection code cannot be empty.';
+    END IF;
+
+    v_clean_code := UPPER(TRIM(v_input));
+    v_is_uuid := v_input ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
+
+    -- 4. Lookup patient by SMRITI connection_code, fallback to id if UUID
+    SELECT * INTO v_patient_rec
+    FROM public.patients
+    WHERE UPPER(connection_code) = v_clean_code
+       OR (v_is_uuid AND id = v_input::UUID);
+
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Invalid Patient Connection Code. Patient not found.';
     END IF;
 
-    SELECT * INTO v_profile_rec FROM public.profiles WHERE id = v_patient_rec.profile_id;
-
+    -- 5. Prevent linking own patient account
     IF v_patient_rec.profile_id = auth.uid() THEN
         RAISE EXCEPTION 'You cannot link your own patient account as a caretaker.';
     END IF;
 
+    SELECT * INTO v_profile_rec FROM public.profiles WHERE id = v_patient_rec.profile_id;
+
+    -- 6. Insert / Upsert relationship mapping
     INSERT INTO public.caretaker_patient (caretaker_id, patient_id, relationship)
-    VALUES (auth.uid(), p_patient_id, COALESCE(p_relationship, 'Caregiver'))
+    VALUES (auth.uid(), v_patient_rec.id, COALESCE(p_relationship, 'Caregiver'))
     ON CONFLICT (caretaker_id, patient_id) DO UPDATE SET
         relationship = EXCLUDED.relationship
     RETURNING * INTO v_link_rec;
 
+    -- 7. Return safe linkage payload
     RETURN jsonb_build_object(
         'success', true,
         'link_id', v_link_rec.id,
         'patient_id', v_patient_rec.id,
+        'connection_code', v_patient_rec.connection_code,
         'patient_name', v_profile_rec.full_name,
         'patient_phone', v_profile_rec.phone,
         'relationship', v_link_rec.relationship

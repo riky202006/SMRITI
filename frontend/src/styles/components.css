@@ -476,3 +476,31 @@
   animation: spin 0.8s linear infinite;
   margin: 0 auto 12px;
 }
+
+/* --- Smooth Chart Horizontal Scrollbar --- */
+.chart-scroll-viewport {
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+
+.chart-scroll-viewport::-webkit-scrollbar {
+  height: 6px;
+}
+
+.chart-scroll-viewport::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 6px;
+}
+
+.chart-scroll-viewport::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 6px;
+}
+
+.chart-scroll-viewport::-webkit-scrollbar-thumb:hover {
+  background: var(--primary);
+}
+

@@ -1,31 +1,59 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 export default function MemoryActivityChart({ reports = [] }) {
   const [activeReportIndex, setActiveReportIndex] = useState(reports.length - 1);
   const [chartType, setChartType] = useState('line'); // 'line' or 'bar'
+  const scrollContainerRef = useRef(null);
 
   // Reverse so older sessions are on left, newest on right
   const data = [...reports].reverse();
 
+  // Scroll to the latest sessions on initial render and data change
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollLeft = scrollContainerRef.current.scrollWidth;
+    }
+  }, [data.length, chartType]);
+
+  // Keep active report index valid
+  useEffect(() => {
+    if (data.length > 0) {
+      setActiveReportIndex(data.length - 1);
+    }
+  }, [data.length]);
+
   if (data.length === 0) {
     return (
-      <div style={{
-        padding: 24,
-        textAlign: 'center',
-        backgroundColor: 'var(--surface-container-low)',
-        borderRadius: 'var(--radius-lg)',
-        color: 'var(--outline)',
-      }}>
+      <div
+        style={{
+          padding: 24,
+          textAlign: 'center',
+          backgroundColor: 'var(--surface-container-low)',
+          borderRadius: 'var(--radius-lg)',
+          color: 'var(--outline)',
+        }}
+      >
         <p>No memory game sessions recorded yet.</p>
       </div>
     );
   }
 
-  // Calculate summary metrics
+  // Calculate summary metrics (strictly clamped 0 - 100%)
   const totalSessions = data.length;
-  const avgAccuracy = Math.round(data.reduce((acc, r) => acc + (r.accuracy || 0), 0) / totalSessions);
-  const latestAccuracy = data[data.length - 1]?.accuracy || 0;
-  const prevAccuracy = data.length > 1 ? data[data.length - 2]?.accuracy || 0 : latestAccuracy;
+  const avgAccuracy = Math.min(
+    100,
+    Math.max(
+      0,
+      Math.round(
+        data.reduce((acc, r) => acc + Math.min(100, Math.max(0, Number(r.accuracy) || 0)), 0) / totalSessions
+      )
+    )
+  );
+  const latestAccuracy = Math.min(100, Math.max(0, Number(data[data.length - 1]?.accuracy) || 0));
+  const prevAccuracy =
+    data.length > 1
+      ? Math.min(100, Math.max(0, Number(data[data.length - 2]?.accuracy) || 0))
+      : latestAccuracy;
 
   let trendLabel = '💪 Stable';
   let trendColor = '#2e7d32';
@@ -39,21 +67,28 @@ export default function MemoryActivityChart({ reports = [] }) {
 
   const activeReport = data[activeReportIndex] || data[data.length - 1];
 
-  // Fluid responsive SVG coordinates (viewBox system)
-  const svgWidth = 500;
-  const svgHeight = 200;
-  const paddingX = 40;
-  const paddingTop = 25;
-  const paddingBottom = 35;
+  // Generous spacing per data point to prevent clutter and overlapping
+  const pointSpacing = 56; // Pixels per data point
+  const paddingLeft = 48;
+  const paddingRight = 36;
+  const paddingTop = 32;
+  const paddingBottom = 42;
+  const svgHeight = 220;
+  const chartHeight = svgHeight - paddingTop - paddingBottom; // 146px
 
-  const chartWidth = svgWidth - paddingX * 2;
-  const chartHeight = svgHeight - paddingTop - paddingBottom;
+  const minChartWidth = 480;
+  const computedChartWidth = Math.max(minChartWidth, (data.length - 1) * pointSpacing);
+  const svgWidth = computedChartWidth + paddingLeft + paddingRight;
 
-  // Calculate points
+  // Calculate coordinates for each point with strict 0 - 100% clamping
   const points = data.map((d, index) => {
-    const x = paddingX + (index / Math.max(1, data.length - 1)) * chartWidth;
-    const y = paddingTop + chartHeight - ((d.accuracy || 0) / 100) * chartHeight;
-    return { x, y, accuracy: d.accuracy, date: d.date, raw: d, index };
+    const safeAccuracy = Math.min(100, Math.max(0, Math.round(Number(d.accuracy) || 0)));
+    const x =
+      data.length > 1
+        ? paddingLeft + (index / (data.length - 1)) * computedChartWidth
+        : paddingLeft + computedChartWidth / 2;
+    const y = paddingTop + chartHeight - (safeAccuracy / 100) * chartHeight;
+    return { x, y, accuracy: safeAccuracy, date: d.date, raw: d, index };
   });
 
   // Generate SVG path string for line
@@ -62,41 +97,101 @@ export default function MemoryActivityChart({ reports = [] }) {
   }, '');
 
   // Generate Area Fill path string
-  const areaPath = points.length > 0
-    ? `${linePath} L ${points[points.length - 1].x} ${paddingTop + chartHeight} L ${points[0].x} ${paddingTop + chartHeight} Z`
-    : '';
+  const areaPath =
+    points.length > 0
+      ? `${linePath} L ${points[points.length - 1].x} ${paddingTop + chartHeight} L ${points[0].x} ${paddingTop + chartHeight} Z`
+      : '';
+
+  const isScrollable = svgWidth > 580;
 
   return (
-    <div style={{
-      backgroundColor: 'var(--white)',
-      borderRadius: 'var(--radius-xl)',
-      padding: '20px',
-      border: '1px solid var(--surface-container-high)',
-      boxShadow: 'var(--shadow-sm)',
-    }}>
+    <div
+      style={{
+        backgroundColor: 'var(--white)',
+        borderRadius: 'var(--radius-xl)',
+        padding: '20px',
+        border: '1px solid var(--surface-container-high)',
+        boxShadow: 'var(--shadow-sm)',
+      }}
+    >
       {/* Header Metrics */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: 14,
+          flexWrap: 'wrap',
+          gap: 12,
+        }}
+      >
         <div>
-          <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--outline)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: 'var(--outline)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+            }}
+          >
             Cognitive Memory Performance
           </span>
-          <h3 className="headline-md" style={{ margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 8, fontSize: '24px' }}>
-            {avgAccuracy}% <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--outline)' }}>Avg Accuracy</span>
+          <h3
+            className="headline-md"
+            style={{
+              margin: '4px 0 0',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: '24px',
+            }}
+          >
+            {avgAccuracy}%{' '}
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--outline)' }}>
+              Avg Accuracy
+            </span>
           </h3>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{
-            fontSize: 12,
-            fontWeight: 800,
-            padding: '4px 12px',
-            borderRadius: 'var(--radius-pill)',
-            backgroundColor: `${trendColor}18`,
-            color: trendColor,
-          }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {isScrollable && (
+            <span
+              style={{
+                fontSize: 11,
+                color: 'var(--outline)',
+                backgroundColor: 'var(--surface-container-low)',
+                padding: '4px 8px',
+                borderRadius: 'var(--radius-pill)',
+                fontWeight: 600,
+              }}
+            >
+              ↔️ Scrollable ({totalSessions} sessions)
+            </span>
+          )}
+
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 800,
+              padding: '4px 12px',
+              borderRadius: 'var(--radius-pill)',
+              backgroundColor: `${trendColor}18`,
+              color: trendColor,
+            }}
+          >
             {trendLabel}
           </span>
-          <div style={{ display: 'flex', gap: 4, backgroundColor: 'var(--surface-container)', padding: 3, borderRadius: 'var(--radius-sm)' }}>
+
+          <div
+            style={{
+              display: 'flex',
+              gap: 4,
+              backgroundColor: 'var(--surface-container)',
+              padding: 3,
+              borderRadius: 'var(--radius-sm)',
+            }}
+          >
             <button
               type="button"
               onClick={() => setChartType('line')}
@@ -133,12 +228,25 @@ export default function MemoryActivityChart({ reports = [] }) {
         </div>
       </div>
 
-      {/* SVG Responsive Container */}
-      <div style={{ width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>
+      {/* Horizontal Scrollable Graph Viewport (Only the graph scrolls) */}
+      <div
+        ref={scrollContainerRef}
+        className="chart-scroll-viewport"
+        style={{
+          width: '100%',
+          maxWidth: '100%',
+          paddingBottom: 6,
+        }}
+      >
         <svg
-          viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-          style={{ width: '100%', height: 'auto', maxHeight: '240px', overflow: 'visible' }}
-          preserveAspectRatio="xMidYMid meet"
+          width={svgWidth}
+          height={svgHeight}
+          style={{
+            display: 'block',
+            minWidth: `${svgWidth}px`,
+            overflow: 'visible',
+            userSelect: 'none',
+          }}
         >
           <defs>
             <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
@@ -147,21 +255,28 @@ export default function MemoryActivityChart({ reports = [] }) {
             </linearGradient>
           </defs>
 
-          {/* Grid lines */}
+          {/* Grid lines and Left Y-Axis labels */}
           {[0, 25, 50, 75, 100].map((val) => {
             const y = paddingTop + chartHeight - (val / 100) * chartHeight;
             return (
               <g key={val}>
                 <line
-                  x1={paddingX - 6}
+                  x1={paddingLeft - 8}
                   y1={y}
-                  x2={svgWidth - paddingX + 6}
+                  x2={svgWidth - 12}
                   y2={y}
-                  stroke="#eee"
-                  strokeDasharray={val === 0 || val === 100 ? 'none' : '3 3'}
-                  strokeWidth="1"
+                  stroke="#f0f0f0"
+                  strokeDasharray={val === 0 || val === 100 ? 'none' : '4 4'}
+                  strokeWidth="1.2"
                 />
-                <text x={paddingX - 10} y={y + 3} textAnchor="end" fontSize="10" fill="#888" fontWeight="600">
+                <text
+                  x={paddingLeft - 12}
+                  y={y + 3.5}
+                  textAnchor="end"
+                  fontSize="10"
+                  fill="#8e8e8e"
+                  fontWeight="600"
+                >
                   {val}%
                 </text>
               </g>
@@ -173,7 +288,7 @@ export default function MemoryActivityChart({ reports = [] }) {
               {/* Area Fill */}
               {areaPath && <path d={areaPath} fill="url(#chartGradient)" />}
 
-              {/* Curve Line */}
+              {/* Line */}
               {linePath && (
                 <path
                   d={linePath}
@@ -194,32 +309,57 @@ export default function MemoryActivityChart({ reports = [] }) {
                     onClick={() => setActiveReportIndex(i)}
                     style={{ cursor: 'pointer' }}
                   >
-                    <circle
-                      cx={pt.x}
-                      cy={pt.y}
-                      r={isActive ? 7 : 5}
-                      fill={isActive ? 'var(--primary)' : 'var(--white)'}
-                      stroke="var(--primary)"
-                      strokeWidth={isActive ? 3 : 2}
+                    {/* Hover hit box */}
+                    <rect
+                      x={pt.x - 22}
+                      y={paddingTop}
+                      width={44}
+                      height={chartHeight + 35}
+                      fill="transparent"
                     />
+
+                    {/* Active Halo */}
                     {isActive && (
                       <circle
                         cx={pt.x}
                         cy={pt.y}
-                        r="11"
+                        r="12"
                         fill="none"
                         stroke="var(--primary)"
                         strokeWidth="1.5"
                         strokeDasharray="2 2"
                       />
                     )}
+
+                    {/* Node Dot */}
+                    <circle
+                      cx={pt.x}
+                      cy={pt.y}
+                      r={isActive ? 6.5 : 4.5}
+                      fill={isActive ? 'var(--primary)' : 'var(--white)'}
+                      stroke="var(--primary)"
+                      strokeWidth={isActive ? 3 : 2}
+                    />
+
+                    {/* Value Badge on Node */}
+                    <text
+                      x={pt.x}
+                      y={pt.y - 10}
+                      textAnchor="middle"
+                      fontSize="10"
+                      fontWeight="700"
+                      fill={isActive ? 'var(--primary)' : '#555'}
+                    >
+                      {pt.accuracy}%
+                    </text>
+
                     {/* Date label under X-axis */}
                     <text
                       x={pt.x}
-                      y={svgHeight - 10}
+                      y={svgHeight - 12}
                       textAnchor="middle"
                       fontSize="11"
-                      fontWeight={isActive ? '800' : '500'}
+                      fontWeight={isActive ? '800' : '600'}
                       fill={isActive ? 'var(--primary)' : '#666'}
                     >
                       {pt.date}
@@ -233,37 +373,57 @@ export default function MemoryActivityChart({ reports = [] }) {
             <g>
               {points.map((pt, i) => {
                 const isActive = activeReportIndex === i;
-                const barWidth = 28;
+                const barWidth = 22;
                 const barX = pt.x - barWidth / 2;
                 const barY = pt.y;
                 const barH = paddingTop + chartHeight - pt.y;
 
                 return (
-                  <g key={i} onClick={() => setActiveReportIndex(i)} style={{ cursor: 'pointer' }}>
+                  <g
+                    key={i}
+                    onClick={() => setActiveReportIndex(i)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    {/* Hover hit box */}
+                    <rect
+                      x={pt.x - 24}
+                      y={paddingTop}
+                      width={48}
+                      height={chartHeight + 35}
+                      fill="transparent"
+                    />
+
+                    {/* Bar Rectangle */}
                     <rect
                       x={barX}
                       y={barY}
                       width={barWidth}
                       height={Math.max(4, barH)}
                       rx="4"
-                      fill={isActive ? 'var(--primary)' : 'var(--mint)'}
+                      fill={isActive ? 'var(--primary)' : 'var(--mint, #86efac)'}
+                      stroke={isActive ? 'var(--primary)' : 'none'}
+                      strokeWidth={isActive ? '1.5' : '0'}
                     />
+
+                    {/* Accuracy Percentage above Bar */}
                     <text
                       x={pt.x}
-                      y={pt.y - 6}
+                      y={Math.max(16, pt.y - 6)}
                       textAnchor="middle"
                       fontSize="10"
                       fontWeight="700"
-                      fill="var(--primary)"
+                      fill={isActive ? 'var(--primary)' : '#1b5e20'}
                     >
                       {pt.accuracy}%
                     </text>
+
+                    {/* Date label under X-axis */}
                     <text
                       x={pt.x}
-                      y={svgHeight - 10}
+                      y={svgHeight - 12}
                       textAnchor="middle"
                       fontSize="11"
-                      fontWeight={isActive ? '800' : '500'}
+                      fontWeight={isActive ? '800' : '600'}
                       fill={isActive ? 'var(--primary)' : '#666'}
                     >
                       {pt.date}
@@ -278,15 +438,24 @@ export default function MemoryActivityChart({ reports = [] }) {
 
       {/* Selected Session Detail Card */}
       {activeReport && (
-        <div style={{
-          marginTop: 16,
-          padding: '14px 16px',
-          backgroundColor: 'var(--surface-container-low)',
-          borderRadius: 'var(--radius-md)',
-          borderLeft: '4px solid var(--primary)',
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--primary)' }}>
+        <div
+          style={{
+            marginTop: 14,
+            padding: '12px 16px',
+            backgroundColor: 'var(--surface-container-low)',
+            borderRadius: 'var(--radius-md)',
+            borderLeft: '4px solid var(--primary)',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: 4,
+            }}
+          >
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>
               Session: {activeReport.date} ({activeReport.timestamp || 'Recorded'})
             </span>
             <span style={{ fontSize: 13, fontWeight: 800, color: '#2e7d32' }}>
@@ -294,15 +463,29 @@ export default function MemoryActivityChart({ reports = [] }) {
             </span>
           </div>
 
-          <p style={{ margin: '4px 0 10px', fontSize: 13, color: 'var(--ink)' }}>
+          <p style={{ margin: '3px 0 8px', fontSize: 13, color: 'var(--ink)' }}>
             {activeReport.summary}
           </p>
 
-          <div style={{ display: 'flex', gap: 12, fontSize: 12 }}>
-            <span style={{ backgroundColor: 'var(--white)', padding: '4px 10px', borderRadius: 4, border: '1px solid #eee' }}>
-              Accuracy: <strong>{activeReport.accuracy}%</strong>
+          <div style={{ display: 'flex', gap: 10, fontSize: 12 }}>
+            <span
+              style={{
+                backgroundColor: 'var(--white)',
+                padding: '3px 8px',
+                borderRadius: 4,
+                border: '1px solid #eee',
+              }}
+            >
+              Accuracy: <strong>{Math.min(100, Math.max(0, Math.round(Number(activeReport.accuracy) || 0)))}%</strong>
             </span>
-            <span style={{ backgroundColor: 'var(--white)', padding: '4px 10px', borderRadius: 4, border: '1px solid #eee' }}>
+            <span
+              style={{
+                backgroundColor: 'var(--white)',
+                padding: '3px 8px',
+                borderRadius: 4,
+                border: '1px solid #eee',
+              }}
+            >
               Rounds: <strong>{activeReport.correctCount}/{activeReport.totalRounds || 5} Correct</strong>
             </span>
           </div>

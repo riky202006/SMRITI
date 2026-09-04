@@ -285,7 +285,7 @@ export default function PatientProfilePage() {
             <Card style={{ padding: '28px 24px' }}>
               <h2 className="headline-md" style={{ marginBottom: 6, fontSize: '22px' }}>Link Patient Account</h2>
               <p className="body-md" style={{ color: 'var(--outline)', marginBottom: 20, fontSize: '14px' }}>
-                Connect with a patient using their 36-character Patient Connection Code (UUID) found in their Account screen.
+                Connect with a patient using their short SMRITI Connection Code (e.g. SMRITI-X7K9P2) found in their Account screen.
               </p>
 
               {connectError && (
@@ -307,15 +307,15 @@ export default function PatientProfilePage() {
               <form onSubmit={handleConnectPatient} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 <div className="form-group">
                   <label className="form-label">
-                    Patient Connection Code (UUID)
+                    Patient Connection Code (SMRITI-XXXXXX)
                   </label>
                   <input
                     type="text"
                     className="form-input"
                     value={patientCodeInput}
-                    onChange={(e) => setPatientCodeInput(e.target.value)}
-                    placeholder="e.g. 123e4567-e89b-12d3-a456-426614174000"
-                    style={{ fontFamily: 'monospace', fontSize: '13px' }}
+                    onChange={(e) => setPatientCodeInput(e.target.value.toUpperCase())}
+                    placeholder="e.g. SMRITI-X7K9P2"
+                    style={{ fontFamily: 'monospace', fontSize: '15px', fontWeight: 600, letterSpacing: '1px' }}
                     required
                   />
                 </div>

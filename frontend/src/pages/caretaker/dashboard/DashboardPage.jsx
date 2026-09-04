@@ -156,7 +156,7 @@ export default function DashboardPage() {
           <Card style={{ marginBottom: 24, border: '2px solid var(--primary)', backgroundColor: 'var(--surface-container-lowest)' }}>
             <h3 className="headline-sm" style={{ marginBottom: 6, fontSize: '18px' }}>Link Patient by Connection Code</h3>
             <p className="body-md" style={{ color: 'var(--outline)', fontSize: '14px', marginBottom: 16 }}>
-              Enter the UUID Patient Connection Code from the patient&apos;s Account screen:
+              Enter the short SMRITI Connection Code from the patient&apos;s Account screen (e.g. SMRITI-X7K9P2):
             </p>
 
             {connectError && (
@@ -176,14 +176,14 @@ export default function DashboardPage() {
 
             <form onSubmit={handleConnectPatient} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div className="form-group">
-                <label className="form-label">Patient Connection Code (UUID)</label>
+                <label className="form-label">Patient Connection Code (SMRITI-XXXXXX)</label>
                 <input
                   type="text"
                   className="form-input"
                   value={patientCodeInput}
-                  onChange={(e) => setPatientCodeInput(e.target.value)}
-                  placeholder="e.g. 123e4567-e89b-12d3-a456-426614174000"
-                  style={{ fontFamily: 'monospace', fontSize: '14px' }}
+                  onChange={(e) => setPatientCodeInput(e.target.value.toUpperCase())}
+                  placeholder="e.g. SMRITI-X7K9P2"
+                  style={{ fontFamily: 'monospace', fontSize: '15px', fontWeight: 600, letterSpacing: '1px' }}
                   required
                 />
               </div>

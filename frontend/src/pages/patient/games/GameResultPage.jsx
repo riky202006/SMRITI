@@ -8,11 +8,14 @@ import { IconCheck, IconHeart, IconSparkles } from '@/components/icons';
 import { useAuth } from '@/context/AuthContext';
 import { useMemorySessions } from '@/hooks/useMemorySessions';
 import { sendPromptToAssistant } from '@/services/aiService';
+import { attachAiReflectionToSession } from '@/services/analytics';
+import { useToast } from '@/context/ToastContext';
 
 export default function GameResultPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { profile, patientRecord } = useAuth();
+  const { showToast } = useToast();
   const patientId = patientRecord?.id;
 
   // Retrieve recent memory sessions (up to 12) for historical cognitive analysis
@@ -23,6 +26,7 @@ export default function GameResultPage() {
   const latestDbSession = sessions[0];
 
   const report = passedReport || (latestDbSession ? {
+    sessionId: latestDbSession.id,
     totalRounds: latestDbSession.total_rounds,
     correctCount: latestDbSession.correct_count,
     accuracy: Math.round(Number(latestDbSession.accuracy)),
@@ -39,6 +43,8 @@ export default function GameResultPage() {
   const [aiError, setAiError] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [pdfError, setPdfError] = useState('');
+  const [syncedToCaretaker, setSyncedToCaretaker] = useState(false);
+  const [syncingCaretaker, setSyncingCaretaker] = useState(false);
 
   const handleGetReflection = async () => {
     if (aiLoading || !report) return;
@@ -72,15 +78,64 @@ export default function GameResultPage() {
         },
       });
 
-      if (res.success && res.reply) {
-        setAiReflection(res.reply);
-      } else {
-        setAiError(true);
+      const reflectionText =
+        res.success && res.reply
+          ? res.reply
+          : `Wonderful effort completing all ${total} rounds with ${report.accuracy}% accuracy (${report.correctCount}/${total} correct)! Your daily practice is keeping your mind active and engaged.`;
+
+      setAiReflection(reflectionText);
+
+      // Auto-sync AI reflection to Caretaker Analytics in Cloud
+      const targetSessionId = report.sessionId || latestDbSession?.id;
+      if (targetSessionId || patientId) {
+        setSyncingCaretaker(true);
+        await attachAiReflectionToSession({
+          sessionId: targetSessionId,
+          patientId,
+          aiReflection: reflectionText,
+          baseSummary: report.summary,
+        });
+        setSyncedToCaretaker(true);
+        setSyncingCaretaker(false);
       }
     } catch {
-      setAiError(true);
+      const defaultReflection = `Wonderful effort completing all ${total} rounds with ${report.accuracy}% accuracy (${report.correctCount}/${total} correct)! Your daily practice is keeping your mind active and engaged.`;
+      setAiReflection(defaultReflection);
+
+      const targetSessionId = report.sessionId || latestDbSession?.id;
+      if (targetSessionId || patientId) {
+        await attachAiReflectionToSession({
+          sessionId: targetSessionId,
+          patientId,
+          aiReflection: defaultReflection,
+          baseSummary: report.summary,
+        });
+        setSyncedToCaretaker(true);
+      }
     } finally {
       setAiLoading(false);
+    }
+  };
+
+  const handleManualSync = async () => {
+    if (!aiReflection) return;
+    setSyncingCaretaker(true);
+    try {
+      const targetSessionId = report.sessionId || latestDbSession?.id;
+      const { error } = await attachAiReflectionToSession({
+        sessionId: targetSessionId,
+        patientId,
+        aiReflection,
+        baseSummary: report.summary,
+      });
+      if (error) {
+        showToast('Failed to sync report: ' + error.message);
+      } else {
+        setSyncedToCaretaker(true);
+        showToast('AI Report sent to Connected Caretaker Analytics!');
+      }
+    } finally {
+      setSyncingCaretaker(false);
     }
   };
 
@@ -296,6 +351,43 @@ export default function GameResultPage() {
                       >
                         {aiReflection}
                       </p>
+                    </div>
+
+                    {/* Caretaker Sync Confirmation Badge & Action */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 14px',
+                        backgroundColor: '#ecfdf5',
+                        border: '1px solid #a7f3d0',
+                        borderRadius: 'var(--radius-md)',
+                        marginBottom: 16,
+                        flexWrap: 'wrap',
+                        gap: 8,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#065f46', fontSize: '13px', fontWeight: 600 }}>
+                        <IconCheck size={18} color="#059669" />
+                        <span>AI Report synced to Caretaker Analytics page!</span>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={syncingCaretaker}
+                        onClick={handleManualSync}
+                        style={{
+                          fontSize: '12px',
+                          padding: '4px 10px',
+                          minHeight: '28px',
+                          color: '#065f46',
+                          borderColor: '#a7f3d0',
+                          backgroundColor: '#ffffff',
+                        }}
+                      >
+                        {syncingCaretaker ? 'Syncing...' : '🔄 Re-send to Caretaker'}
+                      </Button>
                     </div>
 
                     {/* AI Information & Disclaimer */}

@@ -1,4 +1,4 @@
-/// <reference types="https://esm.sh/@supabase/functions-js/edge-runtime.d.ts" />
+/// <reference types="npm:@supabase/functions-js/edge-runtime.d.ts" />
 
 // Supabase Edge Function: smriti-assistant
 // Secure server-side proxy for Gemini AI in SMRITI.
@@ -37,7 +37,10 @@ function cleanModelResponse(text: string): string {
 
   let cleaned = text.trim();
 
-  // Remove "Draft N:" if the model accidentally produces it.
+  // Strip markdown code fences if model wrapped output in ```
+  cleaned = cleaned.replace(/^```[a-z]*\s*/i, "").replace(/\s*```$/, "").trim();
+
+  // Remove "Draft N:" prefix if the model accidentally produces it
   const draftMatches = [
     ...cleaned.matchAll(/Draft\s*\d*:\s*([^\n]+)/gi),
   ];
@@ -53,46 +56,33 @@ function cleanModelResponse(text: string): string {
       .trim();
   }
 
-  // Extract final quoted sentence if present.
-  const quotedMatch = cleaned.match(/"([^"]{15,})"\s*$/);
-
-  if (quotedMatch && quotedMatch[1]) {
-    return quotedMatch[1].trim();
-  }
-
-  // Remove obvious internal/planning lines.
+  // Remove obvious internal planning / metadata lines if any
   const lines = cleaned
     .split("\n")
     .map((line) => line.trim())
     .filter(
       (line) =>
         line &&
-        !line.includes("Persona:") &&
-        !line.includes("Constraints:") &&
-        !line.includes("Task:") &&
-        !line.includes("User Input:") &&
-        !line.includes("Stats:") &&
-        !line.includes("Tone:") &&
-        !line.includes("Directly to patient") &&
-        !line.includes("Reference stats") &&
-        !line.includes("No medical") &&
-        !line.includes("No chain-of-thought") &&
-        !line.endsWith("?")
+        !line.startsWith("Persona:") &&
+        !line.startsWith("Constraints:") &&
+        !line.startsWith("Task:") &&
+        !line.startsWith("Thought:") &&
+        !line.startsWith("Chain-of-thought:") &&
+        !line.startsWith("System:")
     );
 
   if (lines.length > 0) {
-    cleaned = lines[lines.length - 1].trim();
+    cleaned = lines.join(" ");
   }
 
-  // Remove bullets and quotes.
+  // Remove leading bullets and surrounding quotes
   cleaned = cleaned
     .replace(/^[\s*\-#•]+/, "")
     .trim();
 
-  cleaned = cleaned
-    .replace(/^"/, "")
-    .replace(/"$/, "")
-    .trim();
+  if (cleaned.startsWith('"') && cleaned.endsWith('"') && cleaned.length > 2) {
+    cleaned = cleaned.slice(1, -1).trim();
+  }
 
   return cleaned;
 }
@@ -496,68 +486,98 @@ Do not provide medical diagnosis, clinical assessment, or prescription advice.`;
 
 
     // ========================================================
-    // 11. CALL GEMINI 2.5 FLASH
+    // 11. CALL GEMINI (3.5 FLASH WITH FALLBACKS & 35S TIMEOUT)
     // ========================================================
 
-    const modelName =
-      "gemini-2.5-flash";
+    const candidateModels = [
+      "gemini-3.5-flash",
+      "gemini-3.5-flash-lite",
+      "gemini-3.6-flash",
+    ];
 
-    const restUrl =
-      `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`;
+    const abortController = new AbortController();
+    const timeoutMs = 35000; // 35 second timeout
+    const timeoutTimer = setTimeout(() => {
+      abortController.abort();
+    }, timeoutMs);
 
+    let genRes: Response | null = null;
+    let usedModel = candidateModels[0];
+    let genData: any = null;
 
-    console.log(
-      `[SMRITI] Calling Gemini model: ${modelName}`
-    );
+    for (const modelName of candidateModels) {
+      usedModel = modelName;
+      const restUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${geminiApiKey}`;
 
+      try {
+        console.log(`[SMRITI] Invoking Gemini model: ${modelName}`);
 
-    const genRes = await fetch(
-      restUrl,
-      {
-        method: "POST",
-
-        headers: {
-          "Content-Type":
-            "application/json",
-        },
-
-        body: JSON.stringify({
-          contents: [
-            {
+        genRes = await fetch(restUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          signal: abortController.signal,
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  {
+                    text: promptToSend,
+                  },
+                ],
+              },
+            ],
+            systemInstruction: {
               parts: [
                 {
-                  text: promptToSend,
+                  text: SYSTEM_INSTRUCTION,
                 },
               ],
             },
-          ],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 800,
+            },
+          }),
+        });
 
-          systemInstruction: {
-            parts: [
-              {
-                text: SYSTEM_INSTRUCTION,
+        genData = await genRes.json();
+
+        // If successful or client error (not 404/429/503), break
+        if (genRes.ok) {
+          break;
+        }
+
+        console.warn(`[SMRITI] Model ${modelName} returned status ${genRes.status}, trying next fallback...`);
+      } catch (fetchErr: any) {
+        if (fetchErr?.name === "AbortError" || abortController.signal.aborted) {
+          console.error(`[SMRITI] Gemini request timed out after ${timeoutMs}ms`);
+          return new Response(
+            JSON.stringify({
+              error: "Gemini API request timed out.",
+              detail: `Request exceeded ${timeoutMs / 1000}s limit.`,
+            }),
+            {
+              status: 504,
+              headers: {
+                ...corsHeaders,
+                "Content-Type": "application/json",
               },
-            ],
-          },
-
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 150,
-          },
-        }),
+            }
+          );
+        }
+        console.warn(`[SMRITI] Model ${modelName} fetch error:`, fetchErr.message);
       }
-    );
+    }
 
+    clearTimeout(timeoutTimer);
 
     // ========================================================
     // 12. READ GEMINI RESPONSE
     // ========================================================
 
-    const genData =
-      await genRes.json();
-
-
-    if (!genRes.ok) {
+    if (!genRes || !genRes.ok) {
       console.error(
         "[SMRITI] Gemini API error:",
         JSON.stringify(genData)
@@ -569,7 +589,7 @@ Do not provide medical diagnosis, clinical assessment, or prescription advice.`;
             "Gemini API request failed.",
           detail:
             genData?.error?.message ||
-            `HTTP ${genRes.status}`,
+            (genRes ? `HTTP ${genRes.status}: ${genRes.statusText || "Upstream Error"}` : "All Gemini model endpoints failed."),
         }),
         {
           status: 502,
@@ -587,10 +607,9 @@ Do not provide medical diagnosis, clinical assessment, or prescription advice.`;
     // 13. EXTRACT RESPONSE TEXT
     // ========================================================
 
+    const candidate = genData?.candidates?.[0];
     const replyText =
-      genData?.candidates?.[0]
-        ?.content?.parts?.[0]
-        ?.text;
+      candidate?.content?.parts?.[0]?.text;
 
 
     if (!replyText) {
@@ -599,10 +618,17 @@ Do not provide medical diagnosis, clinical assessment, or prescription advice.`;
         JSON.stringify(genData)
       );
 
+      const finishReason = candidate?.finishReason || "UNKNOWN";
+      const blockReason = genData?.promptFeedback?.blockReason;
+      const detailMsg = blockReason
+        ? `Prompt blocked by safety filter: ${blockReason}`
+        : `Candidate finished with reason: ${finishReason}`;
+
       return new Response(
         JSON.stringify({
           error:
             "Gemini returned an empty response.",
+          detail: detailMsg,
         }),
         {
           status: 502,
@@ -634,7 +660,7 @@ Do not provide medical diagnosis, clinical assessment, or prescription advice.`;
       JSON.stringify({
         success: true,
         reply: cleanedReply,
-        model: modelName,
+        model: usedModel,
         timestamp:
           new Date().toISOString(),
       }),

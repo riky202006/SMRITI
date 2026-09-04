@@ -16,7 +16,7 @@ SMRITI is a production-ready, fully responsive, real-time healthcare application
 - **Multi-language Support**: English, Hindi, and regional North-East languages (Assamese, Bodo, Kokborok, Manipuri).
 
 ### 🩺 Caretaker Portal
-- **Centralized Care Hub**: Multi-patient connection via 36-character UUID pairing codes.
+- **Centralized Care Hub**: Multi-patient connection via short readable SMRITI pairing codes (e.g. SMRITI-X7K9P2).
 - **Prescription Manager**: Add, update, and monitor daily doses with intake confirmation logs.
 - **Appointment Scheduling**: Plan clinical visits and family appointments with real-time patient notification.
 - **Live GPS & Geofence Radar**: Real-time Leaflet/OpenStreetMap telemetry stream with satellite fix coordinates.
