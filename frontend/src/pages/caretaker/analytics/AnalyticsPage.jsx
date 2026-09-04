@@ -4,9 +4,8 @@ import TopBar from '@/components/layout/TopBar';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import MemoryActivityChart from '@/components/charts/MemoryActivityChart';
-import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
-import { getAssignedPatients } from '@/services/patients';
+import { useCaretaker } from '@/context/CaretakerContext';
 import { useMemorySessions } from '@/hooks/useMemorySessions';
 import { IconStats, IconGamepad, IconDocument, IconSparkles, IconDownload } from '@/components/icons';
 import { generateGameResultPdf } from '@/services/pdfService';
@@ -41,35 +40,14 @@ function parseSessionSummary(rawSummary) {
 }
 
 export default function AnalyticsPage() {
-  const { user } = useAuth();
   const { showToast } = useToast();
-
-  const [patient, setPatient] = useState(null);
-  const [loadingPatient, setLoadingPatient] = useState(true);
+  const { activePatient: patient, loadingPatients: loadingPatient } = useCaretaker();
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [customAccuracy, setCustomAccuracy] = useState('80');
   const [customNotes, setCustomNotes] = useState('');
   const [savingNote, setSavingNote] = useState(false);
   const [downloadingSessionId, setDownloadingSessionId] = useState(null);
-
-  // 1. Fetch assigned patient
-  useEffect(() => {
-    if (user?.id) {
-      setLoadingPatient(true);
-      getAssignedPatients(user.id)
-        .then(({ data }) => {
-          if (data && data.length > 0) {
-            setPatient(data[0]);
-          } else {
-            setPatient(null);
-          }
-        })
-        .finally(() => {
-          setLoadingPatient(false);
-        });
-    }
-  }, [user?.id]);
 
   const patientId = patient?.patient_id;
   const patientName = patient?.patient?.profiles?.full_name || 'Assigned Patient';
@@ -178,18 +156,59 @@ export default function AnalyticsPage() {
           </Card>
         ) : (
           <>
-            {/* Banner */}
-            <Card style={{ backgroundColor: 'var(--primary)', color: 'var(--white)', padding: '24px', marginBottom: 20, borderRadius: 'var(--radius-xl)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                <IconStats size={30} style={{ color: 'var(--mint-soft)' }} />
-                <h2 className="headline-md" style={{ color: 'var(--white)', margin: 0, fontSize: '22px' }}>
-                  {patientName}&apos;s Cognitive Activity
-                </h2>
-              </div>
-              <p className="body-md" style={{ color: 'var(--mint-soft)', margin: 0, fontSize: '14px' }}>
-                Track cognitive health trends, accuracy curves, and AI-generated cognitive reflections across memory challenges.
-              </p>
-            </Card>
+          {/* Banner */}
+{/* Banner */}
+<Card
+  style={{
+    backgroundColor: "#00695C", // Same teal as Patient Companion card
+    color: "#FFFFFF",
+    borderRadius: "28px",
+    padding: "30px 28px",
+    marginBottom: 24,
+    boxShadow: "0 8px 24px rgba(0,95,86,0.18)",
+  }}
+>
+  {/* Icon pinned to top-left corner */}
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "flex-start",
+      alignItems: "flex-start",
+      marginBottom: 16,
+    }}
+  >
+    <IconStats size={34} color="#A8F5E5" />
+  </div>
+
+  {/* Heading */}
+  <h2
+    className="headline-lg"
+    style={{
+      color: "#FFFFFF",
+      margin: "0 0 12px",
+      fontSize: "34px",
+      fontWeight: 800,
+      lineHeight: 1.15,
+    }}
+  >
+    {patientName}&apos;s Cognitive Activity
+  </h2>
+
+  {/* Description */}
+  <p
+    className="body-md"
+    style={{
+      color: "#D8FFF5",
+      margin: 0,
+      fontSize: "15px",
+      lineHeight: 1.7,
+      maxWidth: "680px",
+    }}
+  >
+    Track cognitive health trends, accuracy curves, and AI-generated cognitive
+    reflections across memory challenges.
+  </p>
+</Card>
 
             {/* Featured Latest AI Report Insight for Caretaker */}
             {latestAiSession && latestAiParsed?.aiReflection && (

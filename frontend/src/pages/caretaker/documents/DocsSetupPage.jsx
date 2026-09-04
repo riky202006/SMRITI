@@ -1,43 +1,21 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import TopBar from '@/components/layout/TopBar';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
-import { getAssignedPatients } from '@/services/patients';
+import { useCaretaker } from '@/context/CaretakerContext';
 import { useDocuments } from '@/hooks/useDocuments';
 import { IconDocument } from '@/components/icons';
 
 export default function DocsSetupPage() {
-  const { user } = useAuth();
   const { showToast } = useToast();
-
-  const [patient, setPatient] = useState(null);
-  const [loadingPatient, setLoadingPatient] = useState(true);
+  const { activePatient: patient, loadingPatients: loadingPatient } = useCaretaker();
 
   const [docTitle, setDocTitle] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
-
-  // 1. Fetch assigned patient
-  useEffect(() => {
-    if (user?.id) {
-      setLoadingPatient(true);
-      getAssignedPatients(user.id)
-        .then(({ data }) => {
-          if (data && data.length > 0) {
-            setPatient(data[0]);
-          } else {
-            setPatient(null);
-          }
-        })
-        .finally(() => {
-          setLoadingPatient(false);
-        });
-    }
-  }, [user?.id]);
 
   const patientId = patient?.patient_id;
   const patientName = patient?.patient?.profiles?.full_name || 'Assigned Patient';
@@ -86,18 +64,28 @@ export default function DocsSetupPage() {
     }
   };
 
-  const handleOpenDoc = async (storagePath) => {
-    try {
-      const { data, error } = await getDownloadUrl(storagePath);
-      if (error || !data?.signedUrl) {
-        showToast('Could not generate download URL');
-      } else {
-        window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
-      }
-    } catch {
-      showToast('Error opening document.');
+const handleOpenDoc = async (storagePath) => {
+  try {
+    const { url, error } = await getDownloadUrl(storagePath);
+
+    if (error) {
+      console.error("Supabase URL Error:", error);
+      showToast("Could not generate document URL.");
+      return;
     }
-  };
+
+    if (!url) {
+      showToast("Document URL not found.");
+      return;
+    }
+
+    // Open PDF/Image/Document in a new tab
+    window.open(url, "_blank", "noopener,noreferrer");
+  } catch (err) {
+    console.error("Error opening document:", err);
+    showToast("Error opening document.");
+  }
+};
 
   const handleDeleteDoc = async (docId, storagePath, fileName) => {
     if (!window.confirm(`Delete document "${fileName}" from patient records?`)) return;

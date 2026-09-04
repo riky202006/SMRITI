@@ -42,6 +42,7 @@ export default function LiveTrackingMap({
   showGeofence = true,
   geofenceRadius = 500, // in meters
   height = '100%',
+  showGoogleMapsBtn = true,
 }) {
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
@@ -50,9 +51,17 @@ export default function LiveTrackingMap({
   const geofenceCircleRef = useRef(null);
   const [showSafeZone, setShowSafeZone] = useState(showGeofence);
 
-  const hasCoords = latitude != null && longitude != null;
+  const hasCoords =
+    latitude != null &&
+    longitude != null &&
+    !isNaN(latitude) &&
+    !isNaN(longitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude >= -180 &&
+    longitude <= 180;
 
-  // Initialize Map
+  // Initialize and Update Map
   useEffect(() => {
     if (!hasCoords || !mapContainerRef.current) return;
 
@@ -75,11 +84,13 @@ export default function LiveTrackingMap({
     const map = mapInstanceRef.current;
 
     // Update or Create Patient Marker
+    const popupContent = `<b>${title}</b><br/>Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}`;
     if (markerRef.current) {
       markerRef.current.setLatLng([latitude, longitude]);
+      markerRef.current.setPopupContent(popupContent);
     } else {
       const marker = L.marker([latitude, longitude], { icon: createPatientIcon() }).addTo(map);
-      marker.bindPopup(`<b>${title}</b><br/>Lat: ${latitude.toFixed(5)}, Lng: ${longitude.toFixed(5)}`);
+      marker.bindPopup(popupContent);
       markerRef.current = marker;
     }
 
@@ -99,6 +110,9 @@ export default function LiveTrackingMap({
         }).addTo(map);
         accuracyCircleRef.current = accCircle;
       }
+    } else if (accuracyCircleRef.current) {
+      map.removeLayer(accuracyCircleRef.current);
+      accuracyCircleRef.current = null;
     }
 
     // Update or Create Safe Zone Geofence
@@ -128,10 +142,6 @@ export default function LiveTrackingMap({
     setTimeout(() => {
       map.invalidateSize();
     }, 200);
-
-    return () => {
-      // Clean up map instance only on unmount
-    };
   }, [latitude, longitude, accuracy, title, showSafeZone, geofenceRadius, hasCoords]);
 
   // Clean up map on unmount
@@ -154,6 +164,8 @@ export default function LiveTrackingMap({
       mapInstanceRef.current.invalidateSize();
     }
   };
+
+  const googleMapsUrl = hasCoords ? `https://www.google.com/maps?q=${latitude},${longitude}` : null;
 
   if (!hasCoords) {
     return (
@@ -228,7 +240,7 @@ export default function LiveTrackingMap({
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <button
             type="button"
             onClick={() => setShowSafeZone(!showSafeZone)}
@@ -242,7 +254,7 @@ export default function LiveTrackingMap({
               fontWeight: 700,
             }}
           >
-            {showSafeZone ? '✓ Geofence Safe Zone' : '+ Safe Zone'}
+            {showSafeZone ? '✓ Geofence' : '+ Safe Zone'}
           </button>
 
           <button
@@ -253,6 +265,27 @@ export default function LiveTrackingMap({
           >
             🎯 Recenter
           </button>
+
+          {showGoogleMapsBtn && googleMapsUrl && (
+            <a
+              href={googleMapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-sm btn-outline"
+              style={{
+                padding: '4px 10px',
+                fontSize: '12px',
+                color: 'var(--primary)',
+                borderColor: 'var(--primary)',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              🗺️ Google Maps ↗
+            </a>
+          )}
         </div>
       </div>
 

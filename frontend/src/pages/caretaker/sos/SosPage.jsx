@@ -1,40 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import TopBar from '@/components/layout/TopBar';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import LiveTrackingMap from '@/pages/patient/sos/components/LiveTrackingMap';
-import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
-import { getAssignedPatients } from '@/services/patients';
+import { useCaretaker } from '@/context/CaretakerContext';
 import { useSos } from '@/hooks/useSos';
 import { IconSos, IconCheck } from '@/components/icons';
 
 export default function SosPage() {
   const { showToast } = useToast();
-  const { user } = useAuth();
+  const { activePatient: patient, loadingPatients: loadingPatient } = useCaretaker();
 
-  const [patient, setPatient] = useState(null);
-  const [loadingPatient, setLoadingPatient] = useState(true);
   const [processingId, setProcessingId] = useState(null);
-
-  // 1. Fetch assigned patient
-  useEffect(() => {
-    if (user?.id) {
-      setLoadingPatient(true);
-      getAssignedPatients(user.id)
-        .then(({ data }) => {
-          if (data && data.length > 0) {
-            setPatient(data[0]);
-          } else {
-            setPatient(null);
-          }
-        })
-        .finally(() => {
-          setLoadingPatient(false);
-        });
-    }
-  }, [user?.id]);
 
   const patientId = patient?.patient_id;
   const patientName = patient?.patient?.profiles?.full_name || 'Assigned Patient';

@@ -242,7 +242,7 @@ export default function LoginPage() {
                 onClick={() => navigate('/select-role')}
                 style={{ color: 'var(--outline)' }}
               >
-                Switch Role
+                Change Role
               </button>
             </div>
           </form>

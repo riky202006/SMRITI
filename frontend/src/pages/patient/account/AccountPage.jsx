@@ -208,13 +208,9 @@ export default function AccountPage() {
           </select>
         </Card>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12, marginBottom: 24 }}>
-          <Button variant="danger" onClick={handleLogout} disabled={loggingOut}>
+        <div style={{ marginTop: 12, marginBottom: 24 }}>
+          <Button variant="danger" onClick={handleLogout} disabled={loggingOut} style={{ width: '100%' }}>
             {loggingOut ? 'Logging out...' : 'Log Out'}
-          </Button>
-
-          <Button variant="outline" onClick={() => navigate('/select-role')}>
-            Switch User Role
           </Button>
         </div>
       </div>

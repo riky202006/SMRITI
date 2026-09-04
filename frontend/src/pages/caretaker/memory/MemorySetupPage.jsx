@@ -5,37 +5,18 @@ import TopBar from '@/components/layout/TopBar';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import MemoryActivityChart from '@/components/charts/MemoryActivityChart';
-import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
-import { getAssignedPatients, getPatientSettings, updatePatientSettings } from '@/services/patients';
+import { useCaretaker } from '@/context/CaretakerContext';
+import { getPatientSettings, updatePatientSettings } from '@/services/patients';
 import { useMemorySessions } from '@/hooks/useMemorySessions';
 
 export default function MemorySetupPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { showToast } = useToast();
+  const { activePatient: patient, loadingPatients: loadingPatient } = useCaretaker();
 
-  const [patient, setPatient] = useState(null);
-  const [loadingPatient, setLoadingPatient] = useState(true);
   const [difficulty, setDifficulty] = useState('Medium');
   const [savingSettings, setSavingSettings] = useState(false);
-
-  useEffect(() => {
-    if (user?.id) {
-      setLoadingPatient(true);
-      getAssignedPatients(user.id)
-        .then(({ data }) => {
-          if (data && data.length > 0) {
-            setPatient(data[0]);
-          } else {
-            setPatient(null);
-          }
-        })
-        .finally(() => {
-          setLoadingPatient(false);
-        });
-    }
-  }, [user?.id]);
 
   const patientId = patient?.patient_id;
   const { sessions, loading: loadingSessions } = useMemorySessions(patientId, 15);

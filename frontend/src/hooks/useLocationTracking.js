@@ -13,33 +13,40 @@ export function useLocationTracking(patientId) {
   const [gpsCoords, setGpsCoords] = useState(null);
   const [gpsError, setGpsError] = useState(null);
   const [loading, setLoading] = useState(Boolean(patientId));
+  const [refreshing, setRefreshing] = useState(false);
   const stopTrackingRef = useRef(null);
+
+  // Clear previous patient data immediately when patientId changes
+  useEffect(() => {
+    setLatestLocation(null);
+    setHistory([]);
+    setGpsCoords(null);
+    setGpsError(null);
+  }, [patientId]);
 
   const refresh = useCallback(async () => {
     if (!patientId) {
       setLatestLocation(null);
       setHistory([]);
       setLoading(false);
+      setRefreshing(false);
       return;
     }
 
-    setLoading(true);
+    setRefreshing(true);
     try {
       const [latestRes, histRes] = await Promise.all([
         getLatestLocation(patientId),
         getLocationHistory(patientId, 20),
       ]);
 
-      if (latestRes.data) {
-        setLatestLocation(latestRes.data);
-      }
-      if (histRes.data) {
-        setHistory(histRes.data || []);
-      }
+      setLatestLocation(latestRes.data || null);
+      setHistory(histRes.data || []);
     } catch {
-      // ignore
+      // Ignore network errors gracefully
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [patientId]);
 
@@ -47,13 +54,17 @@ export function useLocationTracking(patientId) {
     refresh();
   }, [refresh]);
 
-  // Real-time stream for Caretaker / Patient map view
+  // Real-time stream for Caretaker / Patient live location updates
   useEffect(() => {
     if (!patientId) return undefined;
 
     const sub = subscribeToPatientLocation(patientId, (newLoc) => {
       if (newLoc && newLoc.latitude != null && newLoc.longitude != null) {
         setLatestLocation(newLoc);
+        setHistory((prev) => {
+          const filtered = prev.filter((item) => item.id !== newLoc.id);
+          return [newLoc, ...filtered.slice(0, 19)];
+        });
       }
     });
 
@@ -62,7 +73,7 @@ export function useLocationTracking(patientId) {
     };
   }, [patientId]);
 
-  // GPS Sharing toggle
+  // GPS Sharing toggle (used on patient side)
   const startTracking = (throttleMs = 15000) => {
     if (!patientId) {
       setGpsError('Patient record missing.');
@@ -122,6 +133,7 @@ export function useLocationTracking(patientId) {
     gpsCoords,
     gpsError,
     loading,
+    refreshing,
     refresh,
     startTracking,
     stopTracking,

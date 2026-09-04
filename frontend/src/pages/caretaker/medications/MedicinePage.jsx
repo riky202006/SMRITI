@@ -1,21 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import TopBar from '@/components/layout/TopBar';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/context/ToastContext';
-import { getAssignedPatients } from '@/services/patients';
+import { useCaretaker } from '@/context/CaretakerContext';
 import { useMedications } from '@/hooks/useMedications';
 import { formatTime } from '@/utils/formatters';
 import { IconMedication, IconCheck } from '@/components/icons';
 
 export default function MedicinePage() {
-  const { user } = useAuth();
   const { showToast } = useToast();
-
-  const [patient, setPatient] = useState(null);
-  const [loadingPatient, setLoadingPatient] = useState(true);
+  const { activePatient: patient, loadingPatients: loadingPatient } = useCaretaker();
 
   // Form states
   const [name, setName] = useState('');
@@ -30,24 +26,6 @@ export default function MedicinePage() {
   const [editDosage, setEditDosage] = useState('');
   const [editType, setEditType] = useState('Tablet');
   const [editTime, setEditTime] = useState('08:00');
-
-  // 1. Fetch assigned patient
-  useEffect(() => {
-    if (user?.id) {
-      setLoadingPatient(true);
-      getAssignedPatients(user.id)
-        .then(({ data }) => {
-          if (data && data.length > 0) {
-            setPatient(data[0]);
-          } else {
-            setPatient(null);
-          }
-        })
-        .finally(() => {
-          setLoadingPatient(false);
-        });
-    }
-  }, [user?.id]);
 
   const patientId = patient?.patient_id;
 

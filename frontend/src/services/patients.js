@@ -97,7 +97,8 @@ export async function getAssignedPatients(caretakerProfileId) {
         )
       )
     `)
-    .eq('caretaker_id', caretakerProfileId);
+    .eq('caretaker_id', caretakerProfileId)
+    .order('created_at', { ascending: false });
 
   return { data: data || [], error };
 }
