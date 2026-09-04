@@ -24,7 +24,6 @@ export default function MemoryActivityChart({ reports = [] }) {
   // Calculate summary metrics
   const totalSessions = data.length;
   const avgAccuracy = Math.round(data.reduce((acc, r) => acc + (r.accuracy || 0), 0) / totalSessions);
-  const maxScore = Math.max(...data.map((r) => r.score || 0));
   const latestAccuracy = data[data.length - 1]?.accuracy || 0;
   const prevAccuracy = data.length > 1 ? data[data.length - 2]?.accuracy || 0 : latestAccuracy;
 
@@ -40,12 +39,12 @@ export default function MemoryActivityChart({ reports = [] }) {
 
   const activeReport = data[activeReportIndex] || data[data.length - 1];
 
-  // SVG dimensions
-  const svgWidth = 320;
-  const svgHeight = 160;
-  const paddingX = 36;
-  const paddingTop = 20;
-  const paddingBottom = 30;
+  // Fluid responsive SVG coordinates (viewBox system)
+  const svgWidth = 500;
+  const svgHeight = 200;
+  const paddingX = 40;
+  const paddingTop = 25;
+  const paddingBottom = 35;
 
   const chartWidth = svgWidth - paddingX * 2;
   const chartHeight = svgHeight - paddingTop - paddingBottom;
@@ -71,43 +70,43 @@ export default function MemoryActivityChart({ reports = [] }) {
     <div style={{
       backgroundColor: 'var(--white)',
       borderRadius: 'var(--radius-xl)',
-      padding: 16,
-      border: '1px solid var(--outline-variant)',
-      boxShadow: '0 4px 12px rgba(0,0,0,0.03)',
+      padding: '20px',
+      border: '1px solid var(--surface-container-high)',
+      boxShadow: 'var(--shadow-sm)',
     }}>
       {/* Header Metrics */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--outline)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             Cognitive Memory Performance
           </span>
-          <h3 className="headline-md" style={{ margin: '2px 0 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <h3 className="headline-md" style={{ margin: '4px 0 0', display: 'flex', alignItems: 'center', gap: 8, fontSize: '24px' }}>
             {avgAccuracy}% <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--outline)' }}>Avg Accuracy</span>
           </h3>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{
             fontSize: 12,
             fontWeight: 800,
-            padding: '4px 10px',
+            padding: '4px 12px',
             borderRadius: 'var(--radius-pill)',
-            backgroundColor: `${trendColor}15`,
+            backgroundColor: `${trendColor}18`,
             color: trendColor,
           }}>
             {trendLabel}
           </span>
-          <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
+          <div style={{ display: 'flex', gap: 4, backgroundColor: 'var(--surface-container)', padding: 3, borderRadius: 'var(--radius-sm)' }}>
             <button
               type="button"
               onClick={() => setChartType('line')}
               style={{
                 border: 'none',
-                padding: '2px 8px',
-                fontSize: 11,
+                padding: '4px 10px',
+                fontSize: 12,
                 fontWeight: 700,
                 borderRadius: 4,
-                backgroundColor: chartType === 'line' ? 'var(--primary)' : 'var(--surface-container)',
+                backgroundColor: chartType === 'line' ? 'var(--primary)' : 'transparent',
                 color: chartType === 'line' ? 'white' : 'var(--outline)',
                 cursor: 'pointer',
               }}
@@ -119,11 +118,11 @@ export default function MemoryActivityChart({ reports = [] }) {
               onClick={() => setChartType('bar')}
               style={{
                 border: 'none',
-                padding: '2px 8px',
-                fontSize: 11,
+                padding: '4px 10px',
+                fontSize: 12,
                 fontWeight: 700,
                 borderRadius: 4,
-                backgroundColor: chartType === 'bar' ? 'var(--primary)' : 'var(--surface-container)',
+                backgroundColor: chartType === 'bar' ? 'var(--primary)' : 'transparent',
                 color: chartType === 'bar' ? 'white' : 'var(--outline)',
                 cursor: 'pointer',
               }}
@@ -134,9 +133,13 @@ export default function MemoryActivityChart({ reports = [] }) {
         </div>
       </div>
 
-      {/* SVG Chart */}
-      <div style={{ width: '100%', overflowX: 'auto', display: 'flex', justifyContent: 'center' }}>
-        <svg width={svgWidth} height={svgHeight} style={{ overflow: 'visible' }}>
+      {/* SVG Responsive Container */}
+      <div style={{ width: '100%', maxWidth: '100%', overflowX: 'hidden' }}>
+        <svg
+          viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+          style={{ width: '100%', height: 'auto', maxHeight: '240px', overflow: 'visible' }}
+          preserveAspectRatio="xMidYMid meet"
+        >
           <defs>
             <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.35" />
@@ -158,7 +161,7 @@ export default function MemoryActivityChart({ reports = [] }) {
                   strokeDasharray={val === 0 || val === 100 ? 'none' : '3 3'}
                   strokeWidth="1"
                 />
-                <text x={paddingX - 10} y={y + 3} textAnchor="end" fontSize="9" fill="#999" fontWeight="600">
+                <text x={paddingX - 10} y={y + 3} textAnchor="end" fontSize="10" fill="#888" fontWeight="600">
                   {val}%
                 </text>
               </g>
@@ -213,9 +216,9 @@ export default function MemoryActivityChart({ reports = [] }) {
                     {/* Date label under X-axis */}
                     <text
                       x={pt.x}
-                      y={svgHeight - 8}
+                      y={svgHeight - 10}
                       textAnchor="middle"
-                      fontSize="10"
+                      fontSize="11"
                       fontWeight={isActive ? '800' : '500'}
                       fill={isActive ? 'var(--primary)' : '#666'}
                     >
@@ -230,7 +233,7 @@ export default function MemoryActivityChart({ reports = [] }) {
             <g>
               {points.map((pt, i) => {
                 const isActive = activeReportIndex === i;
-                const barWidth = 22;
+                const barWidth = 28;
                 const barX = pt.x - barWidth / 2;
                 const barY = pt.y;
                 const barH = paddingTop + chartHeight - pt.y;
@@ -249,7 +252,7 @@ export default function MemoryActivityChart({ reports = [] }) {
                       x={pt.x}
                       y={pt.y - 6}
                       textAnchor="middle"
-                      fontSize="9"
+                      fontSize="10"
                       fontWeight="700"
                       fill="var(--primary)"
                     >
@@ -257,9 +260,9 @@ export default function MemoryActivityChart({ reports = [] }) {
                     </text>
                     <text
                       x={pt.x}
-                      y={svgHeight - 8}
+                      y={svgHeight - 10}
                       textAnchor="middle"
-                      fontSize="10"
+                      fontSize="11"
                       fontWeight={isActive ? '800' : '500'}
                       fill={isActive ? 'var(--primary)' : '#666'}
                     >
@@ -277,29 +280,29 @@ export default function MemoryActivityChart({ reports = [] }) {
       {activeReport && (
         <div style={{
           marginTop: 16,
-          padding: 12,
+          padding: '14px 16px',
           backgroundColor: 'var(--surface-container-low)',
           borderRadius: 'var(--radius-md)',
           borderLeft: '4px solid var(--primary)',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)' }}>
-              Session: {activeReport.date} ({activeReport.timestamp || 'Today'})
+            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--primary)' }}>
+              Session: {activeReport.date} ({activeReport.timestamp || 'Recorded'})
             </span>
-            <span style={{ fontSize: 12, fontWeight: 800, color: '#2e7d32' }}>
+            <span style={{ fontSize: 13, fontWeight: 800, color: '#2e7d32' }}>
               +{activeReport.score} Pts
             </span>
           </div>
 
-          <p style={{ margin: '4px 0 8px', fontSize: 13, color: 'var(--ink)' }}>
+          <p style={{ margin: '4px 0 10px', fontSize: 13, color: 'var(--ink)' }}>
             {activeReport.summary}
           </p>
 
           <div style={{ display: 'flex', gap: 12, fontSize: 12 }}>
-            <span style={{ backgroundColor: 'var(--white)', padding: '4px 8px', borderRadius: 4, border: '1px solid #eee' }}>
+            <span style={{ backgroundColor: 'var(--white)', padding: '4px 10px', borderRadius: 4, border: '1px solid #eee' }}>
               Accuracy: <strong>{activeReport.accuracy}%</strong>
             </span>
-            <span style={{ backgroundColor: 'var(--white)', padding: '4px 8px', borderRadius: 4, border: '1px solid #eee' }}>
+            <span style={{ backgroundColor: 'var(--white)', padding: '4px 10px', borderRadius: 4, border: '1px solid #eee' }}>
               Rounds: <strong>{activeReport.correctCount}/{activeReport.totalRounds || 5} Correct</strong>
             </span>
           </div>

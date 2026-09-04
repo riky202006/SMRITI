@@ -1,22 +1,17 @@
 let mqttClient = null;
 
 export function getMqttClient() {
-  if (mqttClient) return mqttClient;
-  try {
-    // Dynamic import handled at call site; mqtt loaded via npm
-    return null;
-  } catch {
-    return null;
-  }
+  return mqttClient;
 }
 
-export function publishLocation(locData) {
+export function publishLocation(locData, patientId = 'default') {
+  const topic = `smriti/patient/${patientId}/location`;
   if (!mqttClient && typeof window !== 'undefined') {
     import('mqtt').then(({ default: mqtt }) => {
       try {
         mqttClient = mqtt.connect('wss://test.mosquitto.org:8081');
         mqttClient.on('connect', () => {
-          mqttClient.publish('smriti/hackathon/PATIENT_DEMO_001/location', JSON.stringify(locData));
+          mqttClient.publish(topic, JSON.stringify(locData));
         });
       } catch {
         /* MQTT optional */
@@ -26,21 +21,22 @@ export function publishLocation(locData) {
   }
   if (mqttClient) {
     try {
-      mqttClient.publish('smriti/hackathon/PATIENT_DEMO_001/location', JSON.stringify(locData));
+      mqttClient.publish(topic, JSON.stringify(locData));
     } catch {
       /* ignore */
     }
   }
 }
 
-export function subscribeLocation(callback) {
+export function subscribeLocation(patientId = 'default', callback) {
+  const topic = `smriti/patient/${patientId}/location`;
   import('mqtt').then(({ default: mqtt }) => {
     try {
       if (!mqttClient) {
         mqttClient = mqtt.connect('wss://test.mosquitto.org:8081');
       }
-      mqttClient.on('message', (topic, payload) => {
-        if (topic.includes('location')) {
+      mqttClient.on('message', (receivedTopic, payload) => {
+        if (receivedTopic === topic || receivedTopic.includes(patientId)) {
           try {
             callback(JSON.parse(payload.toString()));
           } catch {
@@ -48,7 +44,7 @@ export function subscribeLocation(callback) {
           }
         }
       });
-      mqttClient.subscribe('smriti/hackathon/PATIENT_DEMO_001/location');
+      mqttClient.subscribe(topic);
     } catch {
       /* MQTT optional */
     }

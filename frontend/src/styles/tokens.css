@@ -64,9 +64,9 @@
   --radius-xl: 2rem;
   --radius-pill: 9999px;
 
-  /* Layout & Spacing */
-  --gutter: 24px;
-  --margin-mobile: 24px;
+  /* Fluid Layout & Spacing */
+  --gutter: clamp(14px, 3.5vw, 24px);
+  --margin-mobile: 16px;
   --stack-spacing: 16px;
   --section-spacing: 32px;
   --touch-min: 48px;

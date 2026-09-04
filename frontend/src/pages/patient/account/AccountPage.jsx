@@ -1,23 +1,26 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AppLayout from '@/components/layout/AppLayout';
 import TopBar from '@/components/layout/TopBar';
-import BottomNav from '@/components/layout/BottomNav';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import { useAppData } from '@/hooks/useAppData';
 import { useAuth } from '@/context/AuthContext';
-import { getAssignedCaretakersForPatient } from '@/services/patients';
+import { useToast } from '@/context/ToastContext';
+import { getAssignedCaretakersForPatient, getPatientSettings, updatePatientSettings } from '@/services/patients';
 import { IconUser, IconPhone } from '@/components/icons';
 
 export default function AccountPage() {
   const navigate = useNavigate();
-  const { appData, setAppData, showToast } = useAppData();
   const { user, profile, patientRecord, logout } = useAuth();
-  const [selectedLang, setSelectedLang] = useState(appData.language || 'English');
+  const { showToast } = useToast();
+
+  const [selectedLang, setSelectedLang] = useState('English');
   const [loggingOut, setLoggingOut] = useState(false);
   const [caretakers, setCaretakers] = useState([]);
   const [loadingCaretakers, setLoadingCaretakers] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+
+  const patientId = patientRecord?.id || '';
 
   const nerLanguages = [
     { label: 'English', code: 'en' },
@@ -28,13 +31,11 @@ export default function AccountPage() {
     { label: 'Manipuri / Meitei (মৈতৈলোন্)', code: 'mni' },
   ];
 
-  const patientCode = patientRecord?.id || '';
-
-  // Load connected caretakers from Supabase
+  // Load patient settings & connected caretakers from Supabase
   useEffect(() => {
-    if (patientRecord?.id) {
+    if (patientId) {
       setLoadingCaretakers(true);
-      getAssignedCaretakersForPatient(patientRecord.id)
+      getAssignedCaretakersForPatient(patientId)
         .then(({ data }) => {
           if (data && data.length > 0) {
             setCaretakers(data);
@@ -43,22 +44,30 @@ export default function AccountPage() {
         .finally(() => {
           setLoadingCaretakers(false);
         });
+
+      getPatientSettings(patientId).then(({ data }) => {
+        if (data?.language) {
+          setSelectedLang(data.language);
+        }
+      });
     }
-  }, [patientRecord?.id]);
+  }, [patientId]);
 
   const handleCopyCode = () => {
-    if (!patientCode) return;
-    navigator.clipboard.writeText(patientCode);
+    if (!patientId) return;
+    navigator.clipboard.writeText(patientId);
     setCopiedCode(true);
     showToast('Patient Connection Code copied to clipboard!');
     setTimeout(() => setCopiedCode(false), 3000);
   };
 
-  const handleLanguageChange = (e) => {
+  const handleLanguageChange = async (e) => {
     const val = e.target.value;
     setSelectedLang(val);
-    setAppData((prev) => ({ ...prev, language: val }));
-    showToast(`Language preference selected: ${val}`);
+    if (patientId) {
+      await updatePatientSettings(patientId, { language: val });
+    }
+    showToast(`Language preference saved: ${val}`);
   };
 
   const handleLogout = async () => {
@@ -66,7 +75,7 @@ export default function AccountPage() {
     try {
       await logout();
       showToast('Logged out successfully.');
-      navigate('/', { replace: true });
+      navigate('/select-role', { replace: true });
     } catch {
       showToast('Failed to logout. Please try again.');
     } finally {
@@ -74,73 +83,75 @@ export default function AccountPage() {
     }
   };
 
-  const displayName = profile?.full_name || appData.patientName || 'Ravi Kumar';
-  const displayEmailOrPhone = user?.email || profile?.phone || appData.patientPhone || '+91 9876543210';
+  const displayName = profile?.full_name || user?.email?.split('@')[0] || 'Patient User';
+  const displayEmailOrPhone = user?.email || profile?.phone || 'No contact specified';
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+    <AppLayout mode="patient">
       <TopBar title="My Profile & Settings" />
 
-      <div style={{ flex: 1, padding: 'var(--gutter)', overflowY: 'auto' }}>
-        <Card style={{ textAlign: 'center', padding: 24, marginBottom: 16 }}>
-          <div style={{ margin: '0 auto 12px', width: 64, height: 64, borderRadius: '50%', backgroundColor: 'var(--mint-soft)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <IconUser size={36} />
+      <div style={{ maxWidth: '640px', width: '100%', margin: '8px auto 0' }}>
+        <Card style={{ textAlign: 'center', padding: '32px 24px', marginBottom: 20 }}>
+          <div style={{ margin: '0 auto 16px', width: 72, height: 72, borderRadius: '50%', backgroundColor: 'var(--mint-soft)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <IconUser size={40} />
           </div>
-          <h2 className="headline-md">{displayName}</h2>
-          <p className="body-md" style={{ color: 'var(--outline)' }}>{displayEmailOrPhone}</p>
+          <h2 className="headline-md" style={{ fontSize: '24px', margin: '0 0 6px' }}>{displayName}</h2>
+          <p className="body-md" style={{ color: 'var(--outline)', margin: 0 }}>{displayEmailOrPhone}</p>
         </Card>
 
         {/* Patient Connection Code Card */}
-        <Card style={{ marginBottom: 16, backgroundColor: 'var(--mint-soft)', border: '1.5px solid var(--primary)' }}>
-          <h3 className="label-lg" style={{ color: 'var(--primary)', marginBottom: 4 }}>
+        <Card style={{ marginBottom: 20, backgroundColor: 'var(--mint-soft)', border: '1.5px solid var(--primary)' }}>
+          <h3 className="label-lg" style={{ color: 'var(--primary)', marginBottom: 6 }}>
             PATIENT CONNECTION CODE
           </h3>
-          <p className="body-md" style={{ color: 'var(--on-surface)', fontSize: '13px', marginBottom: 10 }}>
+          <p className="body-md" style={{ color: 'var(--on-surface)', fontSize: '14px', marginBottom: 12 }}>
             Share this code with your caretaker or family member to link accounts:
           </p>
 
           <div
             style={{
-              padding: '10px 12px',
+              padding: '12px 14px',
               backgroundColor: 'var(--surface-container-lowest)',
-              borderRadius: 'var(--radius-sm)',
+              borderRadius: 'var(--radius-md)',
               border: '1px dashed var(--primary)',
               fontFamily: 'monospace',
-              fontSize: '13px',
+              fontSize: '14px',
               wordBreak: 'break-all',
               color: 'var(--ink)',
-              fontWeight: 600,
-              marginBottom: 10,
+              fontWeight: 700,
+              marginBottom: 12,
               textAlign: 'center',
             }}
           >
-            {patientCode || 'Generating connection code...'}
+            {patientId || 'Generating connection code...'}
           </div>
 
           <Button
             variant="primary"
             onClick={handleCopyCode}
-            disabled={!patientCode}
-            style={{ width: '100%', fontSize: '14px', padding: '8px 16px' }}
+            disabled={!patientId}
+            style={{ width: '100%', fontSize: '15px' }}
           >
             {copiedCode ? '✓ Copied to Clipboard' : '📋 Copy Connection Code'}
           </Button>
         </Card>
 
         {/* Connected Caretakers Card */}
-        <Card style={{ marginBottom: 16 }}>
-          <h3 className="headline-sm" style={{ marginBottom: 12 }}>Connected Caretaker</h3>
+        <Card style={{ marginBottom: 20 }}>
+          <h3 className="headline-sm" style={{ marginBottom: 14, fontSize: '18px' }}>Connected Caregiver</h3>
 
           {loadingCaretakers ? (
-            <p className="body-md" style={{ color: 'var(--outline)' }}>Loading caretaker status...</p>
+            <p className="body-md" style={{ color: 'var(--outline)' }}>Loading caregiver status...</p>
           ) : caretakers.length > 0 ? (
             caretakers.map((c) => (
-              <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0' }}>
+              <div key={c.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <IconPhone size={24} style={{ color: 'var(--primary)' }} />
+                  <div style={{ padding: 10, borderRadius: 'var(--radius-pill)', backgroundColor: 'var(--mint-soft)', color: 'var(--primary)' }}>
+                    <IconPhone size={22} />
+                  </div>
                   <div>
-                    <p className="label-lg">{c.caretaker?.full_name || 'Assigned Caretaker'}</p>
-                    <p className="body-md" style={{ color: 'var(--outline)', fontSize: '13px' }}>
+                    <p className="label-lg" style={{ fontSize: '16px', margin: 0 }}>{c.caretaker?.full_name || 'Assigned Caretaker'}</p>
+                    <p className="body-md" style={{ color: 'var(--outline)', fontSize: '13px', margin: '2px 0 0' }}>
                       {c.relationship || 'Caregiver'} • {c.caretaker?.phone || 'Connected'}
                     </p>
                   </div>
@@ -149,10 +160,10 @@ export default function AccountPage() {
                   style={{
                     backgroundColor: '#e8f5e9',
                     color: '#2e7d32',
-                    fontSize: '12px',
+                    fontSize: '13px',
                     fontWeight: 700,
-                    padding: '4px 8px',
-                    borderRadius: 'var(--radius-sm)',
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-pill)',
                   }}
                 >
                   Active
@@ -161,10 +172,12 @@ export default function AccountPage() {
             ))
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <IconPhone size={24} style={{ color: 'var(--outline)' }} />
+              <div style={{ padding: 10, borderRadius: 'var(--radius-pill)', backgroundColor: 'var(--surface-container)', color: 'var(--outline)' }}>
+                <IconPhone size={22} />
+              </div>
               <div>
-                <p className="label-lg" style={{ color: 'var(--outline)' }}>No Caretaker Connected</p>
-                <p className="body-md" style={{ color: 'var(--outline)', fontSize: '13px' }}>
+                <p className="label-lg" style={{ color: 'var(--outline)', margin: 0 }}>No Caretaker Connected</p>
+                <p className="body-md" style={{ color: 'var(--outline)', fontSize: '13px', margin: '2px 0 0' }}>
                   Share your connection code above with your caretaker.
                 </p>
               </div>
@@ -173,27 +186,17 @@ export default function AccountPage() {
         </Card>
 
         {/* Language Preference Dropdown */}
-        <Card style={{ marginBottom: 16 }}>
-          <h3 className="headline-sm" style={{ marginBottom: 8 }}>Language Preference</h3>
-          <p className="body-md" style={{ color: 'var(--outline)', marginBottom: 12, fontSize: '13px' }}>
-            Regional North-East & National languages:
+        <Card style={{ marginBottom: 20 }}>
+          <h3 className="headline-sm" style={{ marginBottom: 8, fontSize: '18px' }}>Language Preference</h3>
+          <p className="body-md" style={{ color: 'var(--outline)', marginBottom: 14, fontSize: '14px' }}>
+            Regional North-East &amp; National languages:
           </p>
 
           <select
             value={selectedLang}
             onChange={handleLanguageChange}
-            style={{
-              width: '100%',
-              padding: '12px 14px',
-              borderRadius: 'var(--radius-md)',
-              border: '2px solid var(--primary)',
-              fontSize: '16px',
-              fontFamily: 'inherit',
-              backgroundColor: 'var(--surface-container-lowest)',
-              color: 'var(--on-surface)',
-              outline: 'none',
-              cursor: 'pointer',
-            }}
+            className="form-select"
+            style={{ fontWeight: 600, fontSize: '15px' }}
           >
             {nerLanguages.map((lang) => (
               <option key={lang.code} value={lang.label}>
@@ -203,18 +206,16 @@ export default function AccountPage() {
           </select>
         </Card>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12, marginBottom: 24 }}>
           <Button variant="danger" onClick={handleLogout} disabled={loggingOut}>
             {loggingOut ? 'Logging out...' : 'Log Out'}
           </Button>
 
-          <Button variant="outline" onClick={() => navigate('/')}>
+          <Button variant="outline" onClick={() => navigate('/select-role')}>
             Switch User Role
           </Button>
         </div>
       </div>
-
-      <BottomNav mode="patient" />
-    </div>
+    </AppLayout>
   );
 }

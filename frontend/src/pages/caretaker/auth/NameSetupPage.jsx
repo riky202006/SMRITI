@@ -2,52 +2,65 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
-import { useAppData } from '@/hooks/useAppData';
+import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
+import { updateProfile } from '@/services/auth';
 
 export default function NameSetupPage() {
   const navigate = useNavigate();
-  const { appData, updateCaretakerName } = useAppData();
-  const [name, setName] = useState(appData.caretakerName || '');
+  const { user, profile } = useAuth();
+  const { showToast } = useToast();
 
-  const handleSubmit = (e) => {
+  const [name, setName] = useState(profile?.full_name || '');
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (name.trim()) {
-      updateCaretakerName(name.trim());
-      navigate('/caretaker/dashboard');
+    if (!name.trim()) return;
+
+    setSaving(true);
+    try {
+      if (user?.id) {
+        await updateProfile(user.id, { full_name: name.trim() });
+      }
+      showToast('Caretaker name saved!');
+      navigate('/caretaker/dashboard', { replace: true });
+    } catch {
+      showToast('Failed to save name. Continuing to dashboard...');
+      navigate('/caretaker/dashboard', { replace: true });
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
-    <div style={{ padding: 'var(--gutter)', display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center' }}>
-      <Card>
-        <h1 className="headline-md" style={{ marginBottom: 12 }}>Caretaker Name</h1>
-        <p className="body-md" style={{ color: 'var(--outline)', marginBottom: 24 }}>
-          Enter your name to set up the caretaker control dashboard.
-        </p>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div style={{ width: '100%', maxWidth: '480px' }}>
+        <Card style={{ padding: '32px 28px' }}>
+          <h1 className="headline-md" style={{ marginBottom: 8, fontSize: '24px' }}>Caretaker Profile Setup</h1>
+          <p className="body-md" style={{ color: 'var(--outline)', marginBottom: 24, fontSize: '15px' }}>
+            Enter your name to set up the caretaker control dashboard.
+          </p>
 
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            className="body-lg"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Caretaker Full Name"
-            style={{
-              width: '100%',
-              padding: '16px 20px',
-              borderRadius: 'var(--radius-md)',
-              border: '2px solid var(--outline-variant)',
-              marginBottom: 24,
-              outline: 'none',
-            }}
-            required
-          />
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="form-group">
+              <label className="form-label">Full Name</label>
+              <input
+                type="text"
+                className="form-input"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Dr. Anita Sharma"
+                required
+              />
+            </div>
 
-          <Button type="submit" variant="primary">
-            Enter Dashboard
-          </Button>
-        </form>
-      </Card>
+            <Button type="submit" variant="primary" disabled={saving} style={{ width: '100%', marginTop: 8 }}>
+              {saving ? 'Saving...' : 'Enter Dashboard'}
+            </Button>
+          </form>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,219 @@
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/schema.sql', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/package-lock.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/package.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/App.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/components/charts/MemoryActivityChart.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/components/icons/index.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/components/layout/BottomNav.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/components/layout/TopBar.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/main.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/caretaker/account/AccountPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/caretaker/analytics/AnalyticsPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/caretaker/auth/LoginPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/caretaker/auth/NameSetupPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/caretaker/dashboard/DashboardPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/caretaker/documents/DocsSetupPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/caretaker/gallery/AddImagePage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/caretaker/gallery/GalleryPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/caretaker/live-tracking/MapPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/caretaker/medications/MedicinePage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/caretaker/memory/MemorySetupPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/caretaker/patient-profile/PatientProfilePage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/caretaker/sos/SosPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/caretaker/visits/VisitsPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/patient/account/AccountPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/patient/auth/LoginPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/patient/auth/NameSetupPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/patient/auth/RoleSelectPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/patient/documents/DocumentsPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/patient/gallery/GalleryPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/patient/games/GameCountdownPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/patient/games/GameInstructionsPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/patient/games/GameQuestionPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/patient/games/GameReadyPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/patient/games/GameResultPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/patient/games/GameStartPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/patient/home/HomePage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/patient/home/components/AppointmentReminderCard.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/patient/home/components/HeroCard.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/patient/home/components/MedReminderCard.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/patient/medications/RemindersPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/patient/sos/SosPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/patient/sos/components/LiveTrackingMap.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/pages/patient/stats/StatsPage.jsx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/services/mqtt.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/styles/components.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/styles/globals.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/src/styles/tokens.css', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'frontend/vite.config.js', LF will be replaced by CRLF the next time Git touches it
+ .env.example                                       |    2 [31m-[m
+ README.md                                          |  113 [32m+[m[31m-[m
+ backend/schema.sql                                 |  210 [32m++[m[31m-[m
+ caretaker.html                                     | 1840 [31m--------------------[m
+ frontend/.env.example                              |    5 [32m+[m[31m-[m
+ .../WhatsApp Image 2026-08-25 at 9.40.35 PM.jpeg   |  Bin [31m92002[m -> [32m0[m bytes
+ frontend/caretaker.html                            | 1840 [31m--------------------[m
+ frontend/index 3.html                              | 1488 [31m----------------[m
+ frontend/index 3_backup.html                       |  856 [31m---------[m
+ frontend/package-lock.json                         |  258 [32m++[m[31m-[m
+ frontend/package.json                              |    3 [32m+[m[31m-[m
+ frontend/patient_ui_plan.md                        |    1 [31m-[m
+ frontend/scripts/add_account_caretaker.js          |   79 [31m-[m
+ frontend/scripts/add_account_patient.js            |   76 [31m-[m
+ frontend/scripts/add_mqtt_caretaker.js             |   43 [31m-[m
+ frontend/scripts/add_mqtt_patient.js               |  122 [31m--[m
+ frontend/scripts/add_storage_sync_caretaker.js     |   22 [31m-[m
+ frontend/scripts/apply_temp.js                     |    4 [31m-[m
+ frontend/scripts/audit_screens.js                  |   25 [31m-[m
+ frontend/scripts/build_perfect_index3.js           | 1489 [31m----------------[m
+ frontend/scripts/check2.js                         |   12 [31m-[m
+ frontend/scripts/check_all_scripts.js              |   31 [31m-[m
+ frontend/scripts/check_all_scripts2.js             |   33 [31m-[m
+ frontend/scripts/check_calls.js                    |   19 [31m-[m
+ frontend/scripts/check_caretaker_screens.js        |   21 [31m-[m
+ frontend/scripts/check_depth.js                    |   19 [31m-[m
+ frontend/scripts/check_depth3.js                   |   13 [31m-[m
+ frontend/scripts/check_docs_html.js                |    5 [31m-[m
+ frontend/scripts/check_dom.js                      |   22 [31m-[m
+ frontend/scripts/check_dom_loaded.js               |    4 [31m-[m
+ frontend/scripts/check_gallery.js                  |   10 [31m-[m
+ frontend/scripts/check_go_chain.js                 |    9 [31m-[m
+ frontend/scripts/check_html_only.js                |   21 [31m-[m
+ frontend/scripts/check_images.js                   |    7 [31m-[m
+ frontend/scripts/check_screens.js                  |   10 [31m-[m
+ frontend/scripts/check_sos_html.js                 |    5 [31m-[m
+ frontend/scripts/check_stats.js                    |    5 [31m-[m
+ frontend/scripts/clean_update.js                   |  736 [31m--------[m
+ frontend/scripts/cleanup_game.js                   |   51 [31m-[m
+ frontend/scripts/debug_js.js                       |   23 [31m-[m
+ frontend/scripts/debug_js2.js                      |   17 [31m-[m
+ frontend/scripts/debug_syntax.js                   |   19 [31m-[m
+ frontend/scripts/deep_inspect.js                   |   36 [31m-[m
+ frontend/scripts/find_appdata.js                   |    8 [31m-[m
+ frontend/scripts/find_close.js                     |   17 [31m-[m
+ frontend/scripts/find_first_error.js               |   35 [31m-[m
+ frontend/scripts/find_orig_nav.js                  |    9 [31m-[m
+ frontend/scripts/fix_backslashes.js                |    4 [31m-[m
+ frontend/scripts/fix_caretaker_map.js              |   75 [31m-[m
+ frontend/scripts/fix_caretaker_mqtt.js             |    8 [31m-[m
+ frontend/scripts/fix_device.js                     |   10 [31m-[m
+ frontend/scripts/fix_duplicate_quit.js             |   19 [31m-[m
+ frontend/scripts/fix_game_start.js                 |    7 [31m-[m
+ frontend/scripts/fix_go.js                         |    7 [31m-[m
+ frontend/scripts/fix_home.js                       |   85 [31m-[m
+ frontend/scripts/fix_index3.js                     |   61 [31m-[m
+ frontend/scripts/fix_medpopup_call.js              |   12 [31m-[m
+ frontend/scripts/fix_mqtt_queue.js                 |    9 [31m-[m
+ frontend/scripts/fix_nav.js                        |    7 [31m-[m
+ frontend/scripts/fix_quit.js                       |   39 [31m-[m
+ frontend/scripts/fix_quotes.js                     |   13 [31m-[m
+ frontend/scripts/fix_screen_css.js                 |   15 [31m-[m
+ frontend/scripts/fix_selectrole.js                 |   22 [31m-[m
+ frontend/scripts/fix_syntax.js                     |    5 [31m-[m
+ frontend/scripts/fix_syntax_error.js               |   99 [31m--[m
+ frontend/scripts/fix_tree.js                       |   12 [31m-[m
+ frontend/scripts/fixer.js                          |    7 [31m-[m
+ frontend/scripts/inspect_app.js                    |   23 [31m-[m
+ frontend/scripts/inspect_device.js                 |   11 [31m-[m
+ frontend/scripts/list_backup_screens.js            |    6 [31m-[m
+ frontend/scripts/list_screens.js                   |    6 [31m-[m
+ frontend/scripts/mega_update_caretaker.js          |  517 [31m------[m
+ frontend/scripts/mega_update_patient.js            |  366 [31m----[m
+ frontend/scripts/print_appdata.js                  |    6 [31m-[m
+ frontend/scripts/print_chunk.js                    |    6 [31m-[m
+ frontend/scripts/print_chunk2.js                   |    6 [31m-[m
+ frontend/scripts/print_css.js                      |    7 [31m-[m
+ frontend/scripts/print_game_html.js                |    6 [31m-[m
+ frontend/scripts/print_game_js.js                  |    6 [31m-[m
+ frontend/scripts/print_home_full.js                |    6 [31m-[m
+ frontend/scripts/print_orig_stats.js               |    6 [31m-[m
+ frontend/scripts/print_reminders.js                |    6 [31m-[m
+ frontend/scripts/print_script_mid.js               |    6 [31m-[m
+ frontend/scripts/print_stats.js                    |    5 [31m-[m
+ frontend/scripts/read_defaults.js                  |    5 [31m-[m
+ frontend/scripts/read_gallery_script.js            |    3 [31m-[m
+ frontend/scripts/read_nav_scripts.js               |    5 [31m-[m
+ frontend/scripts/read_p3_p4.js                     |    5 [31m-[m
+ frontend/scripts/rename.js                         |   22 [31m-[m
+ frontend/scripts/rename_final.js                   |   17 [31m-[m
+ frontend/scripts/restore_home.js                   |   30 [31m-[m
+ frontend/scripts/restore_screens.js                |  110 [31m--[m
+ frontend/scripts/search_nav.js                     |   13 [31m-[m
+ frontend/scripts/test.js                           |  323 [31m----[m
+ frontend/scripts/test_suite.js                     |  104 [31m--[m
+ frontend/scripts/trace_depth.js                    |   20 [31m-[m
+ frontend/scripts/update.js                         |  549 [31m------[m
+ frontend/scripts/update2.js                        |   24 [31m-[m
+ frontend/scripts/update_caretaker.js               |  297 [31m----[m
+ frontend/scripts/update_caretaker_name.js          |   34 [31m-[m
+ frontend/scripts/update_caretaker_namesetup.js     |   45 [31m-[m
+ frontend/scripts/update_caretaker_p2.js            |  140 [31m--[m
+ frontend/scripts/update_index3.js                  |  198 [31m---[m
+ frontend/scripts/update_index3_gallery.js          |   29 [31m-[m
+ frontend/scripts/update_index3_name.js             |   95 [31m-[m
+ frontend/scripts/update_index3_p2.js               |  134 [31m--[m
+ frontend/scripts/update_index3_p3.js               |  137 [31m--[m
+ frontend/scripts/update_index3_p4.js               |  101 [31m--[m
+ frontend/scripts/update_index3_p5.js               |   19 [31m-[m
+ frontend/scripts/update_index3_p6.js               |    8 [31m-[m
+ frontend/scripts/update_nav.js                     |   17 [31m-[m
+ frontend/scripts/update_patient_ui.js              |  131 [31m--[m
+ frontend/scripts/view_home.js                      |    4 [31m-[m
+ frontend/scripts/view_script_start.js              |   23 [31m-[m
+ frontend/scripts/view_stats.js                     |    3 [31m-[m
+ frontend/scripts/vite.config.js                    |   12 [31m-[m
+ frontend/src/App.jsx                               |   17 [32m+[m[31m-[m
+ .../src/components/charts/MemoryActivityChart.jsx  |   81 [32m+[m[31m-[m
+ frontend/src/components/icons/index.jsx            |   97 [32m+[m[31m-[m
+ frontend/src/components/layout/BottomNav.jsx       |    6 [32m+[m[31m-[m
+ frontend/src/components/layout/DeviceFrame.jsx     |   64 [31m-[m
+ frontend/src/components/layout/TopBar.jsx          |   25 [32m+[m[31m-[m
+ frontend/src/components/layout/navItems.jsx        |  105 [31m--[m
+ frontend/src/components/ui/IconButton.jsx          |   13 [31m-[m
+ frontend/src/context/AppContext.jsx                |   54 [31m-[m
+ frontend/src/hooks/useAppData.js                   |   92 [31m-[m
+ frontend/src/hooks/useGameLogic.js                 |  176 [31m--[m
+ frontend/src/hooks/useNavigation.js                |   19 [31m-[m
+ frontend/src/main.jsx                              |    6 [32m+[m[31m-[m
+ frontend/src/pages/caretaker/CaretakerRoutes.jsx   |  159 [31m--[m
+ .../src/pages/caretaker/account/AccountPage.jsx    |   53 [32m+[m[31m-[m
+ .../pages/caretaker/analytics/AnalyticsPage.jsx    |  231 [32m++[m[31m-[m
+ frontend/src/pages/caretaker/auth/LoginPage.jsx    |  311 [32m++[m[31m--[m
+ .../src/pages/caretaker/auth/NameSetupPage.jsx     |   83 [32m+[m[31m-[m
+ .../pages/caretaker/dashboard/DashboardPage.jsx    |  164 [32m+[m[31m-[m
+ .../pages/caretaker/documents/DocsSetupPage.jsx    |  301 [32m+++[m[31m-[m
+ .../src/pages/caretaker/gallery/AddImagePage.jsx   |   70 [32m+[m[31m-[m
+ .../src/pages/caretaker/gallery/GalleryPage.jsx    |  136 [32m+[m[31m-[m
+ .../src/pages/caretaker/live-tracking/MapPage.jsx  |  204 [32m++[m[31m-[m
+ .../pages/caretaker/medications/MedicinePage.jsx   |  541 [32m+++[m[31m---[m
+ .../src/pages/caretaker/memory/MemorySetupPage.jsx |  146 [32m+[m[31m-[m
+ .../patient-profile/PatientProfilePage.jsx         |  388 [32m+++[m[31m--[m
+ frontend/src/pages/caretaker/sos/SosPage.jsx       |  391 [32m++[m[31m---[m
+ frontend/src/pages/caretaker/visits/VisitsPage.jsx |  399 [32m++++[m[31m-[m
+ frontend/src/pages/patient/PatientRoutes.jsx       |   94 [31m-[m
+ frontend/src/pages/patient/account/AccountPage.jsx |  143 [32m+[m[31m-[m
+ frontend/src/pages/patient/auth/LoginPage.jsx      |  289 [32m++[m[31m-[m
+ frontend/src/pages/patient/auth/NameSetupPage.jsx  |  126 [32m+[m[31m-[m
+ frontend/src/pages/patient/auth/RoleSelectPage.jsx |  138 [32m+[m[31m-[m
+ frontend/src/pages/patient/auth/SplashPage.jsx     |   26 [31m-[m
+ .../src/pages/patient/documents/DocumentsPage.jsx  |  115 [32m+[m[31m-[m
+ frontend/src/pages/patient/gallery/GalleryPage.jsx |  106 [32m+[m[31m-[m
+ .../src/pages/patient/games/GameCountdownPage.jsx  |   19 [32m+[m[31m-[m
+ .../pages/patient/games/GameInstructionsPage.jsx   |   37 [32m+[m[31m-[m
+ frontend/src/pages/patient/games/GamePlayPage.jsx  |  214 [31m---[m
+ .../src/pages/patient/games/GameQuestionPage.jsx   |  186 [32m+[m[31m-[m
+ frontend/src/pages/patient/games/GameReadyPage.jsx |   13 [32m+[m[31m-[m
+ .../src/pages/patient/games/GameResultPage.jsx     |  466 [32m++++[m[31m-[m
+ frontend/src/pages/patient/games/GameStartPage.jsx |   26 [32m+[m[31m-[m
+ frontend/src/pages/patient/games/games.css         |  231 [31m---[m
+ .../src/pages/patient/games/hooks/useGameLogic.js  |  117 [31m--[m
+ frontend/src/pages/patient/home/HomePage.jsx       |  301 [32m++[m[31m--[m
+ .../home/components/AppointmentReminderCard.jsx    |   28 [32m+[m[31m-[m
+ .../src/pages/patient/home/components/HeroCard.jsx |   25 [32m+[m[31m-[m
+ .../patient/home/components/MedReminderCard.jsx    |   40 [32m+[m[31m-[m
+ .../pages/patient/medications/MedicationsPage.jsx  |  182 [31m--[m
+ .../pages/patient/medications/RemindersPage.jsx    |  199 [32m+[m[31m--[m
+ frontend/src/pages/patient/sos/SosPage.jsx         |  545 [32m+++[m[31m---[m
+ .../patient/sos/components/LiveTrackingMap.jsx     |  276 [32m++[m[31m-[m
+ frontend/src/pages/patient/stats/StatsPage.jsx     |

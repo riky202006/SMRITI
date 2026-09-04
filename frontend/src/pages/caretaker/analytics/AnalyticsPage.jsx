@@ -1,23 +1,21 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
+import AppLayout from '@/components/layout/AppLayout';
 import TopBar from '@/components/layout/TopBar';
-import BottomNav from '@/components/layout/BottomNav';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import MemoryActivityChart from '@/components/charts/MemoryActivityChart';
-import { useAppData } from '@/hooks/useAppData';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 import { getAssignedPatients } from '@/services/patients';
-import { getMemorySessions, saveMemorySession, subscribeToMemorySessions } from '@/services/analytics';
+import { useMemorySessions } from '@/hooks/useMemorySessions';
 import { IconStats, IconGamepad, IconDocument } from '@/components/icons';
 
 export default function AnalyticsPage() {
-  const { showToast } = useAppData();
   const { user } = useAuth();
+  const { showToast } = useToast();
 
   const [patient, setPatient] = useState(null);
   const [loadingPatient, setLoadingPatient] = useState(true);
-  const [sessions, setSessions] = useState([]);
-  const [loadingSessions, setLoadingSessions] = useState(false);
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [customAccuracy, setCustomAccuracy] = useState('80');
@@ -45,36 +43,12 @@ export default function AnalyticsPage() {
   const patientId = patient?.patient_id;
   const patientName = patient?.patient?.profiles?.full_name || 'Assigned Patient';
 
-  // 2. Fetch memory game sessions
-  const loadSessions = useCallback(() => {
-    if (!patientId) return;
-    setLoadingSessions(true);
-
-    getMemorySessions(patientId, 30)
-      .then(({ data }) => {
-        setSessions(data || []);
-      })
-      .finally(() => {
-        setLoadingSessions(false);
-      });
-  }, [patientId]);
-
-  useEffect(() => {
-    loadSessions();
-  }, [loadSessions]);
-
-  // 3. Realtime subscription
-  useEffect(() => {
-    if (!patientId) return undefined;
-
-    const sub = subscribeToMemorySessions(patientId, () => {
-      loadSessions();
-    });
-
-    return () => {
-      sub.unsubscribe();
-    };
-  }, [patientId, loadSessions]);
+  const {
+    sessions,
+    loading: loadingSessions,
+    error: sessionsError,
+    recordSession,
+  } = useMemorySessions(patientId, 30);
 
   // 4. Handle Caretaker Manual Memory Note
   const handleCreateReport = async (e) => {
@@ -87,8 +61,7 @@ export default function AnalyticsPage() {
     const score = correctCount * 10;
 
     try {
-      const { error } = await saveMemorySession({
-        patientId,
+      const { error } = await recordSession({
         totalRounds: 5,
         correctCount,
         accuracy: acc,
@@ -102,10 +75,7 @@ export default function AnalyticsPage() {
         showToast('Patient memory report recorded in cloud!');
         setCustomNotes('');
         setShowAddForm(false);
-        loadSessions();
       }
-    } catch {
-      showToast('Error saving memory note.');
     } finally {
       setSavingNote(false);
     }
@@ -119,19 +89,22 @@ export default function AnalyticsPage() {
     score: s.score || 0,
     correctCount: s.correct_count || 0,
     totalRounds: s.total_rounds || 5,
+    summary: s.summary,
+    timestamp: new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
   }));
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+    <AppLayout mode="caretaker">
       <TopBar title="Cognitive & Game Analytics" />
 
-      <div style={{ flex: 1, padding: 'var(--gutter)', overflowY: 'auto' }}>
+      <div style={{ marginTop: 8 }}>
         {loadingPatient ? (
           <Card style={{ textAlign: 'center', padding: 24 }}>
+            <div className="spinner" />
             <p className="body-md" style={{ color: 'var(--outline)' }}>Loading patient analytics...</p>
           </Card>
         ) : !patient ? (
-          <Card style={{ textAlign: 'center', padding: 24, backgroundColor: '#fff3e0', border: '1px solid #ffb74d' }}>
+          <Card className="empty-state-card" style={{ backgroundColor: '#fff3e0', borderColor: '#ffb74d' }}>
             <h3 className="headline-sm" style={{ color: '#e65100', marginBottom: 6 }}>No Patient Connected</h3>
             <p className="body-md" style={{ color: '#e65100' }}>
               Please link a patient account from your Dashboard to access cognitive session analytics.
@@ -140,71 +113,86 @@ export default function AnalyticsPage() {
         ) : (
           <>
             {/* Banner */}
-            <Card style={{ backgroundColor: 'var(--primary)', color: 'var(--white)', padding: 20, marginBottom: 16 }}>
+            <Card style={{ backgroundColor: 'var(--primary)', color: 'var(--white)', padding: '24px', marginBottom: 20, borderRadius: 'var(--radius-xl)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                <IconStats size={28} style={{ color: 'var(--mint-soft)' }} />
-                <h2 className="headline-md" style={{ color: 'var(--white)', margin: 0 }}>
+                <IconStats size={30} style={{ color: 'var(--mint-soft)' }} />
+                <h2 className="headline-md" style={{ color: 'var(--white)', margin: 0, fontSize: '22px' }}>
                   {patientName}&apos;s Cognitive Activity
                 </h2>
               </div>
-              <p className="body-md" style={{ color: 'var(--mint-soft)', margin: 0, fontSize: 13 }}>
+              <p className="body-md" style={{ color: 'var(--mint-soft)', margin: 0, fontSize: '14px' }}>
                 Track cognitive health trends, accuracy curves, and round performance across memory challenges.
               </p>
             </Card>
 
+            {sessionsError && (
+              <div
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: 'var(--error-container)',
+                  color: 'var(--on-error-container)',
+                  fontSize: '14px',
+                  marginBottom: 16,
+                }}
+              >
+                {sessionsError.message || 'Error loading cognitive analytics.'}
+              </div>
+            )}
+
             {/* Chart View */}
-            <div style={{ marginBottom: 20 }}>
+            <div style={{ marginBottom: 24 }}>
               <MemoryActivityChart reports={chartReports} />
             </div>
 
             {/* Action Row */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <h3 className="label-lg" style={{ color: 'var(--outline)', margin: 0 }}>
-                MEMORY LOGS ({sessions.length})
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+              <h3 className="label-lg" style={{ color: 'var(--outline)', margin: 0, letterSpacing: '0.5px' }}>
+                MEMORY LOGS &amp; SESSIONS ({sessions.length})
               </h3>
               <Button
                 variant={showAddForm ? 'secondary' : 'outline'}
                 onClick={() => setShowAddForm(!showAddForm)}
-                style={{ fontSize: 12, padding: '6px 12px' }}
+                style={{ fontSize: 13, padding: '6px 14px' }}
               >
-                {showAddForm ? 'Cancel Report' : '+ Create Caretaker Note'}
+                {showAddForm ? 'Cancel Note' : '+ Add Clinical Observation'}
               </Button>
             </div>
 
             {/* Caretaker Manual Memory Observation Report Form */}
             {showAddForm && (
-              <Card style={{ marginBottom: 16, border: '2px solid var(--primary)', backgroundColor: 'var(--mint-soft)' }}>
-                <h4 className="headline-sm" style={{ margin: '0 0 12px', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <IconDocument size={20} /> Create Patient Memory Report Entry
+              <Card style={{ marginBottom: 20, border: '2px solid var(--primary)', backgroundColor: 'var(--mint-soft)', padding: '24px' }}>
+                <h4 className="headline-sm" style={{ margin: '0 0 14px', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 8, fontSize: '18px' }}>
+                  <IconDocument size={22} /> Record Caregiver Memory Observation
                 </h4>
-                <form onSubmit={handleCreateReport}>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
-                    Estimated Accuracy (%)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={customAccuracy}
-                    onChange={(e) => setCustomAccuracy(e.target.value)}
-                    style={{ width: '100%', padding: 10, borderRadius: 'var(--radius-sm)', border: '1px solid var(--outline)', marginBottom: 12 }}
-                    required
-                  />
+                <form onSubmit={handleCreateReport} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div className="form-group">
+                    <label className="form-label">Estimated Memory Recall Accuracy (%)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      className="form-input"
+                      value={customAccuracy}
+                      onChange={(e) => setCustomAccuracy(e.target.value)}
+                      required
+                    />
+                  </div>
 
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
-                    Caretaker Notes &amp; Patient Response Observation
-                  </label>
-                  <textarea
-                    rows={3}
-                    placeholder="e.g. Patient recognized daughter Anita in 3s, took longer with Sanjay..."
-                    value={customNotes}
-                    onChange={(e) => setCustomNotes(e.target.value)}
-                    style={{ width: '100%', padding: 10, borderRadius: 'var(--radius-sm)', border: '1px solid var(--outline)', marginBottom: 12 }}
-                    required
-                  />
+                  <div className="form-group">
+                    <label className="form-label">Clinical Notes &amp; Patient Response Observation</label>
+                    <textarea
+                      rows={3}
+                      className="form-textarea"
+                      placeholder="e.g. Patient recognized daughter Anita in 3s, took longer with Sanjay..."
+                      value={customNotes}
+                      onChange={(e) => setCustomNotes(e.target.value)}
+                      required
+                    />
+                  </div>
 
-                  <Button type="submit" variant="primary" disabled={savingNote}>
-                    {savingNote ? 'Saving to Cloud...' : 'Save & Add to Analytics Chart'}
+                  <Button type="submit" variant="primary" disabled={savingNote} style={{ width: '100%' }}>
+                    {savingNote ? 'Saving to Cloud...' : 'Save & Sync to Analytics Chart'}
                   </Button>
                 </form>
               </Card>
@@ -212,56 +200,55 @@ export default function AnalyticsPage() {
 
             {/* List of Reports */}
             {loadingSessions ? (
-              <Card style={{ textAlign: 'center', padding: 20 }}>
+              <Card style={{ textAlign: 'center', padding: 24 }}>
+                <div className="spinner" />
                 <p className="body-md" style={{ color: 'var(--outline)' }}>Loading cloud session history...</p>
               </Card>
             ) : sessions.length === 0 ? (
-              <Card style={{ textAlign: 'center', padding: 24 }}>
-                <h4 className="headline-sm" style={{ marginBottom: 4 }}>No Game Sessions Recorded</h4>
-                <p className="body-md" style={{ color: 'var(--outline)', fontSize: 13 }}>
-                  When {patientName} completes memory games, their scores and accuracy logs will appear here.
-                </p>
+              <Card className="empty-state-card">
+                <div style={{ fontSize: 32, marginBottom: 8 }}>🧠</div>
+                <h4 style={{ fontSize: 17, fontWeight: 700 }}>No Game Sessions Recorded</h4>
+                <p>When {patientName} completes memory games, their scores and accuracy logs will appear here.</p>
               </Card>
             ) : (
-              sessions.map((sess) => (
-                <Card key={sess.id} style={{ marginBottom: 12, borderLeft: '6px solid var(--primary)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <IconGamepad size={22} style={{ color: 'var(--primary)' }} />
-                      <span className="headline-sm" style={{ fontSize: 16 }}>
-                        {sess.summary?.includes('Caretaker Observation') ? 'Caretaker Note' : 'Memory Game Session'}
+              <div className="grid-responsive-2">
+                {sessions.map((sess) => (
+                  <Card key={sess.id} style={{ borderLeft: '5px solid var(--primary)', padding: '18px 20px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <IconGamepad size={22} style={{ color: 'var(--primary)' }} />
+                        <span className="headline-sm" style={{ fontSize: 16 }}>
+                          {sess.summary?.includes('Caretaker Observation') ? 'Caretaker Note' : 'Memory Game Session'}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: 12, color: 'var(--outline)', fontWeight: 600 }}>
+                        {new Date(sess.created_at).toLocaleDateString()}
                       </span>
                     </div>
-                    <span style={{ fontSize: 12, color: 'var(--outline)', fontWeight: 600 }}>
-                      {new Date(sess.created_at).toLocaleDateString()} at{' '}
-                      {new Date(sess.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
 
-                  <p className="body-md" style={{ marginBottom: 10, fontSize: 14 }}>{sess.summary}</p>
+                    <p className="body-md" style={{ marginBottom: 12, fontSize: 14, lineHeight: 1.4 }}>{sess.summary}</p>
 
-                  <div style={{ display: 'flex', gap: 16, backgroundColor: 'var(--surface-container-low)', padding: '8px 12px', borderRadius: 'var(--radius-sm)' }}>
-                    <div>
-                      <p className="label-lg" style={{ color: 'var(--primary)', margin: 0 }}>{sess.accuracy}%</p>
-                      <p className="body-md" style={{ fontSize: 11, color: 'var(--outline)', margin: 0 }}>Accuracy</p>
+                    <div style={{ display: 'flex', gap: 14, backgroundColor: 'var(--surface-container-low)', padding: '8px 12px', borderRadius: 'var(--radius-sm)' }}>
+                      <div>
+                        <p className="label-lg" style={{ color: 'var(--primary)', margin: 0, fontSize: '15px' }}>{sess.accuracy}%</p>
+                        <p className="body-md" style={{ fontSize: 11, color: 'var(--outline)', margin: 0 }}>Accuracy</p>
+                      </div>
+                      <div>
+                        <p className="label-lg" style={{ color: 'var(--secondary)', margin: 0, fontSize: '15px' }}>{sess.correct_count}/{sess.total_rounds || 5}</p>
+                        <p className="body-md" style={{ fontSize: 11, color: 'var(--outline)', margin: 0 }}>Correct</p>
+                      </div>
+                      <div>
+                        <p className="label-lg" style={{ color: '#2e7d32', margin: 0, fontSize: '15px' }}>+{sess.score}</p>
+                        <p className="body-md" style={{ fontSize: 11, color: 'var(--outline)', margin: 0 }}>Score</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="label-lg" style={{ color: 'var(--secondary)', margin: 0 }}>{sess.correct_count}/{sess.total_rounds || 5}</p>
-                      <p className="body-md" style={{ fontSize: 11, color: 'var(--outline)', margin: 0 }}>Rounds Won</p>
-                    </div>
-                    <div>
-                      <p className="label-lg" style={{ color: '#2e7d32', margin: 0 }}>+{sess.score}</p>
-                      <p className="body-md" style={{ fontSize: 11, color: 'var(--outline)', margin: 0 }}>Points</p>
-                    </div>
-                  </div>
-                </Card>
-              ))
+                  </Card>
+                ))}
+              </div>
             )}
           </>
         )}
       </div>
-
-      <BottomNav mode="caretaker" />
-    </div>
+    </AppLayout>
   );
 }

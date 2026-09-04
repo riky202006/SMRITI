@@ -2,26 +2,23 @@ import Card from '@/components/ui/Card';
 import { IconMedication, IconCheck } from '@/components/icons';
 import { formatTime } from '@/utils/formatters';
 
-export default function MedReminderCard({ medicine = [], onToggle }) {
-  const nextMed = medicine[0] || { name: 'Paracetamol', dosage: '500 mg', times: ['08:00'] };
-  const dateStr = new Date().toISOString().split('T')[0];
-  const timeStr = nextMed.times ? nextMed.times[0] : '08:00';
-  const histKey = `${dateStr}_${timeStr}`;
-  const isTaken = nextMed.history ? !!nextMed.history[histKey] : false;
+export default function MedReminderCard({ medication, isTaken, onToggle }) {
+  if (!medication) return null;
+
+  const timeStr = medication.times && medication.times.length > 0 ? medication.times[0] : '08:00';
 
   return (
     <Card style={{
       borderLeft: '4px solid var(--secondary)',
-      padding: '12px 14px',
-      marginBottom: 10,
+      padding: '14px 16px',
+      marginBottom: 12,
       boxSizing: 'border-box',
-      maxWidth: '100%',
-      overflow: 'hidden',
+      width: '100%',
     }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
           <div style={{
-            padding: 6,
+            padding: 8,
             borderRadius: 'var(--radius-pill)',
             backgroundColor: '#fff3e0',
             color: 'var(--secondary)',
@@ -30,7 +27,7 @@ export default function MedReminderCard({ medicine = [], onToggle }) {
             justifyContent: 'center',
             flexShrink: 0,
           }}>
-            <IconMedication size={18} />
+            <IconMedication size={20} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <span style={{
@@ -43,8 +40,8 @@ export default function MedReminderCard({ medicine = [], onToggle }) {
             }}>
               💊 Daily Medication
             </span>
-            <h4 style={{ margin: '2px 0 0', fontSize: 15, fontWeight: 700, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {nextMed.name}
+            <h4 style={{ margin: '2px 0 0', fontSize: 16, fontWeight: 700, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {medication.name}
             </h4>
           </div>
         </div>
@@ -52,8 +49,8 @@ export default function MedReminderCard({ medicine = [], onToggle }) {
         <button
           type="button"
           className={`btn btn-sm ${isTaken ? 'btn-secondary' : 'btn-primary'}`}
-          onClick={() => onToggle && onToggle(nextMed.id, timeStr, dateStr)}
-          style={{ fontSize: 11, padding: '4px 10px', height: 28, flexShrink: 0, width: 'auto' }}
+          onClick={() => onToggle && onToggle(medication.id, timeStr, !isTaken)}
+          style={{ padding: '6px 14px', flexShrink: 0, width: 'auto' }}
         >
           {isTaken ? (
             <>
@@ -65,9 +62,10 @@ export default function MedReminderCard({ medicine = [], onToggle }) {
         </button>
       </div>
 
-      <div style={{ fontSize: 12, color: 'var(--outline)', marginTop: 4, lineHeight: 1.4, display: 'flex', flexWrap: 'wrap', gap: '2px 8px' }}>
-        <span>Dosage: <strong>{nextMed.dosage}</strong></span>
-        <span>• Time: <strong>{formatTime(timeStr)}</strong></span>
+      <div style={{ fontSize: 13, color: 'var(--outline)', marginTop: 4, lineHeight: 1.4, display: 'flex', flexWrap: 'wrap', gap: '4px 12px' }}>
+        {medication.dosage && <span>Dosage: <strong>{medication.dosage}</strong></span>}
+        <span>Scheduled: <strong>{formatTime(timeStr)}</strong></span>
+        {medication.type && <span>• {medication.type}</span>}
       </div>
     </Card>
   );

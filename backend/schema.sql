@@ -129,6 +129,50 @@ CREATE TABLE IF NOT EXISTS public.gallery_images (
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
+-- -----------------------------------------------------------------------------
+-- 11. APPOINTMENTS TABLE (Doctor visits & family visitor reminders)
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.appointments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'doctor' CHECK (kind IN ('doctor', 'visitor')),
+    specialization TEXT,
+    relation TEXT,
+    date DATE NOT NULL,
+    time TEXT NOT NULL,
+    location TEXT,
+    purpose TEXT,
+    status TEXT NOT NULL DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'completed', 'cancelled')),
+    acknowledged BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- -----------------------------------------------------------------------------
+-- 12. EMERGENCY_CONTACTS TABLE (Family & caregiver emergency numbers)
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.emergency_contacts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    patient_id UUID NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    relationship TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    is_primary BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- -----------------------------------------------------------------------------
+-- 13. PATIENT_SETTINGS TABLE (Preferences & accessibility configs)
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.patient_settings (
+    patient_id UUID PRIMARY KEY REFERENCES public.patients(id) ON DELETE CASCADE,
+    language TEXT DEFAULT 'English',
+    reminder_sound BOOLEAN DEFAULT true,
+    voice_enabled BOOLEAN DEFAULT true,
+    difficulty TEXT DEFAULT 'Medium',
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
 -- ==============================================================================
 -- INDEXES FOR PERFORMANCE
 -- ==============================================================================
@@ -144,6 +188,9 @@ CREATE INDEX IF NOT EXISTS idx_sos_alerts_status ON public.sos_alerts(status);
 CREATE INDEX IF NOT EXISTS idx_locations_patient ON public.locations(patient_id);
 CREATE INDEX IF NOT EXISTS idx_documents_patient ON public.documents(patient_id);
 CREATE INDEX IF NOT EXISTS idx_gallery_images_patient ON public.gallery_images(patient_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_patient ON public.appointments(patient_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_date ON public.appointments(date);
+CREATE INDEX IF NOT EXISTS idx_emergency_contacts_patient ON public.emergency_contacts(patient_id);
 
 -- ==============================================================================
 -- SECURITY DEFINER HELPER FUNCTIONS (Bypasses recursion in RLS policies)
@@ -297,25 +344,6 @@ BEGIN
 END;
 $$;
 
--- Backfill any existing auth.users without profiles/patients
-INSERT INTO public.profiles (id, full_name, role, phone)
-SELECT 
-    u.id,
-    COALESCE(u.raw_user_meta_data->>'full_name', split_part(u.email, '@', 1), 'User'),
-    COALESCE(u.raw_user_meta_data->>'role', 'patient'),
-    COALESCE(u.raw_user_meta_data->>'phone', '')
-FROM auth.users u
-LEFT JOIN public.profiles p ON p.id = u.id
-WHERE p.id IS NULL
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO public.patients (profile_id)
-SELECT p.id
-FROM public.profiles p
-LEFT JOIN public.patients pat ON pat.profile_id = p.id
-WHERE p.role = 'patient' AND pat.id IS NULL
-ON CONFLICT (profile_id) DO NOTHING;
-
 -- ==============================================================================
 -- ROW LEVEL SECURITY POLICIES (DATABASE TABLES)
 -- ==============================================================================
@@ -331,6 +359,9 @@ ALTER TABLE public.sos_alerts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.locations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.documents ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.gallery_images ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.appointments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.emergency_contacts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.patient_settings ENABLE ROW LEVEL SECURITY;
 
 -- 1. Profiles Policies
 DROP POLICY IF EXISTS "Users can read own profile" ON public.profiles;
@@ -515,6 +546,67 @@ CREATE POLICY "Gallery Images Delete Policy"
     ON public.gallery_images FOR DELETE
     USING (public.has_patient_access(patient_id));
 
+-- 11. Appointments Policies
+DROP POLICY IF EXISTS "Appointments Select Policy" ON public.appointments;
+DROP POLICY IF EXISTS "Appointments Insert Policy" ON public.appointments;
+DROP POLICY IF EXISTS "Appointments Update Policy" ON public.appointments;
+DROP POLICY IF EXISTS "Appointments Delete Policy" ON public.appointments;
+
+CREATE POLICY "Appointments Select Policy"
+    ON public.appointments FOR SELECT
+    USING (public.has_patient_access(patient_id));
+
+CREATE POLICY "Appointments Insert Policy"
+    ON public.appointments FOR INSERT
+    WITH CHECK (public.has_patient_access(patient_id));
+
+CREATE POLICY "Appointments Update Policy"
+    ON public.appointments FOR UPDATE
+    USING (public.has_patient_access(patient_id));
+
+CREATE POLICY "Appointments Delete Policy"
+    ON public.appointments FOR DELETE
+    USING (public.has_patient_access(patient_id));
+
+-- 12. Emergency Contacts Policies
+DROP POLICY IF EXISTS "Emergency Contacts Select Policy" ON public.emergency_contacts;
+DROP POLICY IF EXISTS "Emergency Contacts Insert Policy" ON public.emergency_contacts;
+DROP POLICY IF EXISTS "Emergency Contacts Update Policy" ON public.emergency_contacts;
+DROP POLICY IF EXISTS "Emergency Contacts Delete Policy" ON public.emergency_contacts;
+
+CREATE POLICY "Emergency Contacts Select Policy"
+    ON public.emergency_contacts FOR SELECT
+    USING (public.has_patient_access(patient_id));
+
+CREATE POLICY "Emergency Contacts Insert Policy"
+    ON public.emergency_contacts FOR INSERT
+    WITH CHECK (public.has_patient_access(patient_id));
+
+CREATE POLICY "Emergency Contacts Update Policy"
+    ON public.emergency_contacts FOR UPDATE
+    USING (public.has_patient_access(patient_id));
+
+CREATE POLICY "Emergency Contacts Delete Policy"
+    ON public.emergency_contacts FOR DELETE
+    USING (public.has_patient_access(patient_id));
+
+-- 13. Patient Settings Policies
+DROP POLICY IF EXISTS "Patient Settings Select Policy" ON public.patient_settings;
+DROP POLICY IF EXISTS "Patient Settings Insert Policy" ON public.patient_settings;
+DROP POLICY IF EXISTS "Patient Settings Update Policy" ON public.patient_settings;
+
+CREATE POLICY "Patient Settings Select Policy"
+    ON public.patient_settings FOR SELECT
+    USING (public.has_patient_access(patient_id));
+
+CREATE POLICY "Patient Settings Insert Policy"
+    ON public.patient_settings FOR INSERT
+    WITH CHECK (public.has_patient_access(patient_id));
+
+CREATE POLICY "Patient Settings Update Policy"
+    ON public.patient_settings FOR UPDATE
+    USING (public.has_patient_access(patient_id));
+
 -- ==============================================================================
 -- REALTIME REPLICATION PUBLICATION SETUP (IDEMPOTENT)
 -- ==============================================================================
@@ -546,21 +638,65 @@ BEGIN
   ) THEN
     ALTER PUBLICATION supabase_realtime ADD TABLE public.memory_sessions;
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'medications'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.medications;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'medication_logs'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.medication_logs;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'sos_alerts'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.sos_alerts;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'appointments'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.appointments;
+  END IF;
 END $$;
 
 -- ==============================================================================
--- SUPABASE STORAGE BUCKET & STORAGE RLS POLICIES (GALLERY)
+-- SUPABASE STORAGE BUCKETS & STORAGE RLS POLICIES
 -- ==============================================================================
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('gallery', 'gallery', false)
 ON CONFLICT (id) DO NOTHING;
 
--- Clean up any existing policies on storage.objects for gallery
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('documents', 'documents', false)
+ON CONFLICT (id) DO NOTHING;
+
+-- Clean up any existing policies on storage.objects for gallery & documents
 DROP POLICY IF EXISTS "Patients and Caretakers can read gallery photos" ON storage.objects;
 DROP POLICY IF EXISTS "Caretakers and Patients can upload gallery photos" ON storage.objects;
 DROP POLICY IF EXISTS "Caretakers and Patients can delete gallery photos" ON storage.objects;
 
--- SELECT Policy: Access allowed if authenticated user has access to patient_id in folder path
+DROP POLICY IF EXISTS "Patients and Caretakers can read documents" ON storage.objects;
+DROP POLICY IF EXISTS "Caretakers and Patients can upload documents" ON storage.objects;
+DROP POLICY IF EXISTS "Caretakers and Patients can delete documents" ON storage.objects;
+
+-- GALLERY POLICIES
 CREATE POLICY "Patients and Caretakers can read gallery photos"
 ON storage.objects FOR SELECT
 TO authenticated
@@ -570,7 +706,6 @@ USING (
     AND public.has_patient_access((split_part(name, '/', 1))::uuid)
 );
 
--- INSERT Policy: Upload allowed if authenticated user has access to patient_id in folder path
 CREATE POLICY "Caretakers and Patients can upload gallery photos"
 ON storage.objects FOR INSERT
 TO authenticated
@@ -580,12 +715,39 @@ WITH CHECK (
     AND public.has_patient_access((split_part(name, '/', 1))::uuid)
 );
 
--- DELETE Policy: Delete allowed if authenticated user has access to patient_id in folder path
 CREATE POLICY "Caretakers and Patients can delete gallery photos"
 ON storage.objects FOR DELETE
 TO authenticated
 USING (
     bucket_id = 'gallery'
+    AND split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    AND public.has_patient_access((split_part(name, '/', 1))::uuid)
+);
+
+-- DOCUMENTS POLICIES
+CREATE POLICY "Patients and Caretakers can read documents"
+ON storage.objects FOR SELECT
+TO authenticated
+USING (
+    bucket_id = 'documents'
+    AND split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    AND public.has_patient_access((split_part(name, '/', 1))::uuid)
+);
+
+CREATE POLICY "Caretakers and Patients can upload documents"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+    bucket_id = 'documents'
+    AND split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    AND public.has_patient_access((split_part(name, '/', 1))::uuid)
+);
+
+CREATE POLICY "Caretakers and Patients can delete documents"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (
+    bucket_id = 'documents'
     AND split_part(name, '/', 1) ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
     AND public.has_patient_access((split_part(name, '/', 1))::uuid)
 );

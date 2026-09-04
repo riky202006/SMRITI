@@ -15,9 +15,22 @@ export default function GameCountdownPage() {
   }, [count, navigate]);
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--primary)', color: 'var(--white)' }}>
-      <p className="body-lg" style={{ color: 'var(--mint-soft)', marginBottom: 12 }}>Get Ready...</p>
-      <h1 style={{ fontSize: 96, fontWeight: 800 }}>{count}</h1>
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'var(--primary)',
+      color: 'var(--white)',
+      padding: '24px',
+    }}>
+      <p style={{ color: 'var(--mint-soft)', fontSize: '24px', fontWeight: 600, marginBottom: 16 }}>
+        Get Ready...
+      </p>
+      <h1 style={{ fontSize: 'clamp(96px, 15vw, 160px)', fontWeight: 900, lineHeight: 1 }}>
+        {count}
+      </h1>
     </div>
   );
 }

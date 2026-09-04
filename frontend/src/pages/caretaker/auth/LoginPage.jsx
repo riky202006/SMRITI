@@ -3,18 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
 import { useAuth } from '@/context/AuthContext';
-import { useAppData } from '@/hooks/useAppData';
+import { useToast } from '@/context/ToastContext';
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const { login, signup } = useAuth();
-  const { showToast, updateCaretakerName } = useAppData();
+  const { showToast } = useToast();
 
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [isRateLimited, setIsRateLimited] = useState(false);
@@ -25,18 +26,14 @@ export default function LoginPage() {
 
     if (err.code === 'over_email_send_rate_limit' || err.status === 429) {
       setIsRateLimited(true);
-      return 'Email rate limit reached on Supabase [429 over_email_send_rate_limit]. If you already registered this account, please click "Sign In" below. Otherwise, please wait a short while for the limit to reset.';
+      return 'Email rate limit reached on Supabase. If you already registered this account, please click "Sign In" below.';
     }
 
     if (err.isExistingUser || err.code === 'user_already_exists') {
       return 'This account is already registered. Please sign in below.';
     }
 
-    const parts = [];
-    if (err.code) parts.push(`Code: ${err.code}`);
-    if (err.status) parts.push(`Status: ${err.status}`);
-    const details = parts.length > 0 ? ` [${parts.join(', ')}]` : '';
-    return `${err.message || 'Authentication error'}${details}`;
+    return err.message || 'Authentication error';
   };
 
   const handleSubmit = async (e) => {
@@ -45,14 +42,32 @@ export default function LoginPage() {
     setIsRateLimited(false);
 
     const trimmedEmail = email.trim();
-    if (!trimmedEmail || !password) {
-      setErrorMsg('Please enter both email and password.');
+    if (!trimmedEmail) {
+      setErrorMsg('Please enter your email address.');
+      return;
+    }
+
+    if (!password) {
+      setErrorMsg('Please enter your password.');
       return;
     }
 
     if (password.length < 6) {
       setErrorMsg('Password must be at least 6 characters.');
       return;
+    }
+
+    // Client-side confirmation validation for registration
+    if (isSignUp) {
+      if (!confirmPassword) {
+        setErrorMsg('Please confirm your password.');
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        setErrorMsg('Passwords do not match. Please ensure both passwords are identical.');
+        return;
+      }
     }
 
     setLoading(true);
@@ -77,12 +92,11 @@ export default function LoginPage() {
         }
 
         if (user) {
-          updateCaretakerName(caretakerName);
           showToast('Caretaker account created successfully!');
           navigate('/caretaker/dashboard', { replace: true });
         }
       } else {
-        const { user, profile, error } = await login({
+        const { user, error } = await login({
           email: trimmedEmail,
           password,
         });
@@ -93,10 +107,7 @@ export default function LoginPage() {
         }
 
         if (user) {
-          if (profile?.full_name) {
-            updateCaretakerName(profile.full_name);
-          }
-          showToast('Welcome to Caretaker Dashboard');
+          showToast('Welcome to Caretaker Portal');
           navigate('/caretaker/dashboard', { replace: true });
         }
       }
@@ -108,158 +119,132 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ padding: 'var(--gutter)', display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center' }}>
-      <Card>
-        <h1 className="headline-md" style={{ marginBottom: 8 }}>
-          {isSignUp ? 'Caretaker Registration' : 'Caretaker Portal Login'}
-        </h1>
-        <p className="body-md" style={{ color: 'var(--outline)', marginBottom: 20 }}>
-          {isSignUp
-            ? 'Create an account to monitor patients, medications & safety.'
-            : 'Sign in to access patient analytics, live tracking & schedules.'}
-        </p>
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div style={{ width: '100%', maxWidth: '480px' }}>
+        <Card style={{ padding: '32px 28px' }}>
+          <h1 className="headline-md" style={{ marginBottom: 8, fontSize: '24px' }}>
+            {isSignUp ? 'Caretaker Registration' : 'Caretaker Portal Login'}
+          </h1>
+          <p className="body-md" style={{ color: 'var(--outline)', marginBottom: 24, fontSize: '15px' }}>
+            {isSignUp
+              ? 'Create an account to monitor patients, prescriptions, live GPS & safety.'
+              : 'Sign in to access patient analytics, live tracking & schedules.'}
+          </p>
 
-        {errorMsg && (
-          <div
-            style={{
-              padding: '12px 14px',
-              borderRadius: 'var(--radius-sm)',
-              backgroundColor: isRateLimited ? '#fff3e0' : 'var(--error-container)',
-              color: isRateLimited ? '#e65100' : 'var(--on-error-container)',
-              fontSize: '14px',
-              marginBottom: 16,
-              lineHeight: 1.4,
-              wordBreak: 'break-word',
-              border: isRateLimited ? '1px solid #ffb74d' : 'none',
-            }}
-          >
-            <strong>{isRateLimited ? 'Notice:' : 'Supabase Auth Error:'}</strong> {errorMsg}
-          </div>
-        )}
+          {errorMsg && (
+            <div
+              style={{
+                padding: '12px 14px',
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: isRateLimited ? '#fff3e0' : 'var(--error-container)',
+                color: isRateLimited ? '#e65100' : 'var(--on-error-container)',
+                fontSize: '14px',
+                marginBottom: 20,
+                lineHeight: 1.4,
+                wordBreak: 'break-word',
+              }}
+            >
+              <strong>Notice:</strong> {errorMsg}
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit}>
-          {isSignUp && (
-            <>
-              <div style={{ marginBottom: 16 }}>
-                <label className="label-lg" style={{ display: 'block', marginBottom: 6 }}>Full Name</label>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {isSignUp && (
+              <>
+                <div className="form-group">
+                  <label className="form-label">Full Name</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="e.g. Dr. Anita Sharma"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Phone Number (Optional)</label>
+                  <input
+                    type="tel"
+                    className="form-input"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="e.g. +91 98765 43210"
+                  />
+                </div>
+              </>
+            )}
+
+            <div className="form-group">
+              <label className="form-label">Email Address</label>
+              <input
+                type="email"
+                className="form-input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="e.g. caretaker@example.com"
+                autoComplete="email"
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Password</label>
+              <input
+                type="password"
+                className="form-input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Min. 6 characters"
+                required
+              />
+            </div>
+
+            {isSignUp && (
+              <div className="form-group">
+                <label className="form-label">Confirm Password</label>
                 <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Anita Sharma"
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '2px solid var(--outline-variant)',
-                    fontSize: '16px',
-                    outline: 'none',
-                  }}
+                  type="password"
+                  className="form-input"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter your password"
                   required
                 />
               </div>
+            )}
 
-              <div style={{ marginBottom: 16 }}>
-                <label className="label-lg" style={{ display: 'block', marginBottom: 6 }}>Phone Number</label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="e.g. +91 98765 43210"
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    borderRadius: 'var(--radius-md)',
-                    border: '2px solid var(--outline-variant)',
-                    fontSize: '16px',
-                    outline: 'none',
-                  }}
-                />
-              </div>
-            </>
-          )}
+            <Button type="submit" variant="primary" disabled={loading} style={{ width: '100%', marginTop: 8 }}>
+              {loading ? 'Authenticating...' : isSignUp ? 'Create Caretaker Account' : 'Sign In'}
+            </Button>
 
-          <div style={{ marginBottom: 16 }}>
-            <label className="label-lg" style={{ display: 'block', marginBottom: 6 }}>Email Address</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="e.g. caretaker@example.com"
-              autoComplete="email"
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                borderRadius: 'var(--radius-md)',
-                border: '2px solid var(--outline-variant)',
-                fontSize: '16px',
-                outline: 'none',
-              }}
-              required
-            />
-          </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, fontSize: '14px', flexWrap: 'wrap', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setErrorMsg('');
+                  setIsRateLimited(false);
+                  setPassword('');
+                  setConfirmPassword('');
+                }}
+                style={{ color: 'var(--primary)', fontWeight: 600 }}
+              >
+                {isSignUp ? 'Already registered? Sign In' : 'New caretaker? Register'}
+              </button>
 
-          <div style={{ marginBottom: 20 }}>
-            <label className="label-lg" style={{ display: 'block', marginBottom: 6 }}>Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Min. 6 characters"
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                borderRadius: 'var(--radius-md)',
-                border: '2px solid var(--outline-variant)',
-                fontSize: '16px',
-                outline: 'none',
-              }}
-              required
-            />
-          </div>
-
-          <Button type="submit" variant="primary" disabled={loading} style={{ width: '100%', marginBottom: 12 }}>
-            {loading ? 'Authenticating...' : isSignUp ? 'Create Caretaker Account' : 'Sign In'}
-          </Button>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-            <button
-              type="button"
-              onClick={() => {
-                setIsSignUp(!isSignUp);
-                setErrorMsg('');
-                setIsRateLimited(false);
-              }}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--primary)',
-                fontWeight: 600,
-                fontSize: '14px',
-                cursor: 'pointer',
-                padding: 4,
-              }}
-            >
-              {isSignUp ? 'Already registered? Sign In' : 'New caretaker? Register here'}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => navigate('/')}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--outline)',
-                fontSize: '14px',
-                cursor: 'pointer',
-                padding: 4,
-              }}
-            >
-              Switch Role
-            </button>
-          </div>
-        </form>
-      </Card>
+              <button
+                type="button"
+                onClick={() => navigate('/select-role')}
+                style={{ color: 'var(--outline)' }}
+              >
+                Switch Role
+              </button>
+            </div>
+          </form>
+        </Card>
+      </div>
     </div>
   );
 }

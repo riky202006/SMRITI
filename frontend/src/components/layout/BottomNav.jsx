@@ -7,7 +7,6 @@ import {
   IconUser,
   IconStats,
   IconMap,
-  IconGallery,
 } from '../icons';
 
 export default function BottomNav({ mode = 'patient' }) {
@@ -33,7 +32,7 @@ export default function BottomNav({ mode = 'patient' }) {
   const items = mode === 'caretaker' ? caretakerItems : patientItems;
 
   return (
-    <nav className="bottom-nav">
+    <nav className="bottom-nav" aria-label="Mobile navigation">
       {items.map((item) => {
         const Icon = item.icon;
         const isActive = location.pathname.startsWith(item.path);
@@ -44,8 +43,9 @@ export default function BottomNav({ mode = 'patient' }) {
             type="button"
             className={`nav-item ${isActive ? 'active' : ''}`}
             onClick={() => navigate(item.path)}
+            aria-current={isActive ? 'page' : undefined}
           >
-            <Icon size={24} />
+            <Icon size={22} />
             <span>{item.label}</span>
           </button>
         );

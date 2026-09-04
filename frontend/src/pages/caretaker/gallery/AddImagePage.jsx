@@ -1,16 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AppLayout from '@/components/layout/AppLayout';
 import TopBar from '@/components/layout/TopBar';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import { useAppData } from '@/hooks/useAppData';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 import { getAssignedPatients } from '@/services/patients';
-import { uploadGalleryImage } from '@/services/gallery';
+import { useGallery } from '@/hooks/useGallery';
 
 export default function AddImagePage() {
   const navigate = useNavigate();
-  const { showToast } = useAppData();
+  const { showToast } = useToast();
   const { user } = useAuth();
 
   const [patient, setPatient] = useState(null);
@@ -41,12 +42,13 @@ export default function AddImagePage() {
   const patientId = patient?.patient_id;
   const patientName = patient?.patient?.profiles?.full_name || 'Assigned Patient';
 
+  const { uploadImage } = useGallery(patientId);
+
   const handleFileChange = (e) => {
     setErrorMsg('');
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate type
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (!validTypes.includes(file.type.toLowerCase())) {
       setErrorMsg('Please select a JPG, PNG, or WEBP photo.');
@@ -55,7 +57,6 @@ export default function AddImagePage() {
       return;
     }
 
-    // Validate size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setErrorMsg('Photo must be smaller than 5MB.');
       setSelectedFile(null);
@@ -85,8 +86,7 @@ export default function AddImagePage() {
     setUploading(true);
 
     try {
-      const { error } = await uploadGalleryImage({
-        patientId,
+      const { error } = await uploadImage({
         file: selectedFile,
         title: name.trim() || selectedFile.name,
       });
@@ -107,84 +107,75 @@ export default function AddImagePage() {
   };
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+    <AppLayout mode="caretaker">
       <TopBar title="Add Family Photo" onBack={() => navigate('/caretaker/gallery')} />
 
-      <div style={{ flex: 1, padding: 'var(--gutter)', overflowY: 'auto' }}>
+      <div style={{ maxWidth: '540px', width: '100%', margin: '8px auto 0' }}>
         {loadingPatient ? (
           <Card style={{ textAlign: 'center', padding: 24 }}>
+            <div className="spinner" />
             <p className="body-md" style={{ color: 'var(--outline)' }}>Loading patient album info...</p>
           </Card>
         ) : !patient ? (
-          <Card style={{ textAlign: 'center', padding: 24, backgroundColor: '#fff3e0', border: '1px solid #ffb74d' }}>
+          <Card className="empty-state-card" style={{ backgroundColor: '#fff3e0', borderColor: '#ffb74d' }}>
             <h3 className="headline-sm" style={{ color: '#e65100', marginBottom: 6 }}>No Patient Connected</h3>
             <p className="body-md" style={{ color: '#e65100' }}>
               Please link a patient account from your Dashboard to upload family memory photos.
             </p>
           </Card>
         ) : (
-          <Card>
-            <h2 className="headline-md" style={{ marginBottom: 4 }}>Upload Photo for {patientName}</h2>
-            <p className="body-md" style={{ color: 'var(--outline)', marginBottom: 16, fontSize: '13px' }}>
+          <Card style={{ padding: '28px 24px' }}>
+            <h2 className="headline-md" style={{ marginBottom: 4, fontSize: '22px' }}>Upload Photo for {patientName}</h2>
+            <p className="body-md" style={{ color: 'var(--outline)', marginBottom: 20, fontSize: '14px' }}>
               Add family members and familiar faces to stimulate memory recall.
             </p>
 
             {errorMsg && (
               <div
                 style={{
-                  padding: '12px',
+                  padding: '12px 14px',
                   borderRadius: 'var(--radius-sm)',
                   backgroundColor: 'var(--error-container)',
                   color: 'var(--on-error-container)',
                   fontSize: '13px',
                   marginBottom: 16,
-                  lineHeight: 1.4,
                 }}
               >
                 {errorMsg}
               </div>
             )}
 
-            <form onSubmit={handleUpload}>
-              <div style={{ marginBottom: 16 }}>
-                <label className="label-lg" style={{ display: 'block', marginBottom: 6 }}>
-                  Person / Relationship Name
+            <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div className="form-group">
+                <label className="form-label">
+                  Person / Family Member Name
                 </label>
                 <input
                   type="text"
+                  className="form-input"
                   placeholder="e.g. Granddaughter Ananya"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: 12,
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1.5px solid var(--outline)',
-                    fontSize: '14px',
-                  }}
                   required
                 />
               </div>
 
-              <div style={{ marginBottom: 16 }}>
-                <label className="label-lg" style={{ display: 'block', marginBottom: 6 }}>
-                  Select Photo (JPG, PNG, WEBP max 5MB)
+              <div className="form-group">
+                <label className="form-label">
+                  Select Photo File (JPG, PNG, WEBP max 5MB)
                 </label>
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp,image/jpg"
                   onChange={handleFileChange}
-                  style={{
-                    width: '100%',
-                    padding: '10px 0',
-                    fontSize: '14px',
-                  }}
+                  className="form-input"
+                  style={{ padding: '8px 12px' }}
                   required
                 />
               </div>
 
               {previewUrl && (
-                <div style={{ marginBottom: 20, textAlign: 'center' }}>
+                <div style={{ textAlign: 'center', margin: '4px 0 12px' }}>
                   <p className="label-lg" style={{ color: 'var(--outline)', marginBottom: 6, fontSize: '12px' }}>
                     Photo Preview:
                   </p>
@@ -192,23 +183,24 @@ export default function AddImagePage() {
                     src={previewUrl}
                     alt="Preview"
                     style={{
-                      maxHeight: 180,
+                      maxHeight: 200,
                       maxWidth: '100%',
                       borderRadius: 'var(--radius-md)',
                       objectFit: 'cover',
-                      border: '1.5px solid var(--primary)',
+                      border: '2px solid var(--primary)',
+                      margin: '0 auto',
                     }}
                   />
                 </div>
               )}
 
-              <Button type="submit" variant="primary" disabled={uploading} style={{ width: '100%' }}>
+              <Button type="submit" variant="primary" disabled={uploading} style={{ width: '100%', marginTop: 4 }}>
                 {uploading ? 'Uploading to Supabase Storage...' : 'Save Photo to Cloud Album'}
               </Button>
             </form>
           </Card>
         )}
       </div>
-    </div>
+    </AppLayout>
   );
 }

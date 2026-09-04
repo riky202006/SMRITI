@@ -1,1 +1,0 @@
-All updates for Live Tracking applied successfully.

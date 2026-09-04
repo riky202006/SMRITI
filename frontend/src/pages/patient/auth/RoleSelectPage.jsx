@@ -1,16 +1,15 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Card from '@/components/ui/Card';
+import SmritiLogo from '@/components/ui/SmritiLogo';
 import { IconUser, IconHeart } from '@/components/icons';
-import { useAppData } from '@/hooks/useAppData';
 import { useAuth } from '@/context/AuthContext';
 
 export default function RoleSelectPage() {
   const navigate = useNavigate();
-  const { setRole } = useAppData();
   const { user, profile, loading } = useAuth();
 
-  // If user already authenticated, redirect to appropriate portal
+  // If already authenticated, redirect to appropriate portal
   useEffect(() => {
     if (!loading && user && profile) {
       if (profile.role === 'caretaker') {
@@ -22,7 +21,6 @@ export default function RoleSelectPage() {
   }, [user, profile, loading, navigate]);
 
   const handleSelectRole = (role) => {
-    setRole(role);
     if (role === 'patient') {
       navigate('/patient/auth/login');
     } else {
@@ -31,36 +29,118 @@ export default function RoleSelectPage() {
   };
 
   return (
-    <div style={{ padding: 'var(--gutter)', display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center' }}>
-      <div style={{ textAlign: 'center', marginBottom: 32 }}>
-        <div style={{ display: 'inline-flex', padding: 16, borderRadius: '9999px', backgroundColor: 'var(--mint-soft)', color: 'var(--primary)', marginBottom: 16 }}>
-          <IconHeart size={48} />
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div style={{ width: '100%', maxWidth: '520px' }}>
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <SmritiLogo size="medium" style={{ marginBottom: 16 }} />
+
+          <h1 className="headline-lg" style={{ fontSize: 'clamp(24px, 3.5vw, 32px)', margin: '0 0 6px' }}>
+            Select Your Role
+          </h1>
+
+          <p className="body-md" style={{ color: 'var(--outline)', margin: 0, fontSize: '15px' }}>
+            Choose how you would like to use SMRITI today.
+          </p>
         </div>
-        <h1 className="headline-lg">Welcome to Smriti</h1>
-        <p className="body-md" style={{ color: 'var(--outline)', marginTop: 8 }}>
-          Your warm and calm daily memory companion.
-        </p>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Patient Card */}
+          <Card
+            onClick={() => handleSelectRole('patient')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 18,
+              cursor: 'pointer',
+              padding: '22px',
+              border: '2px solid transparent',
+              transition: 'all 0.2s ease',
+              boxShadow: 'var(--shadow-sm)',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--primary)')}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'transparent')}
+          >
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: '50%',
+                backgroundColor: 'var(--mint-soft)',
+                color: 'var(--primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <IconUser size={28} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h2 className="headline-sm" style={{ fontSize: '19px', margin: 0 }}>I am a Patient</h2>
+              <p className="body-md" style={{ color: 'var(--outline)', fontSize: '14px', margin: '4px 0 0' }}>
+                Easy reminders, family memory games &amp; emergency help.
+              </p>
+            </div>
+          </Card>
+
+          {/* Caretaker Card */}
+          <Card
+            onClick={() => handleSelectRole('caretaker')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 18,
+              cursor: 'pointer',
+              padding: '22px',
+              border: '2px solid transparent',
+              transition: 'all 0.2s ease',
+              boxShadow: 'var(--shadow-sm)',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--secondary)')}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'transparent')}
+          >
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: '50%',
+                backgroundColor: '#fff3e0',
+                color: 'var(--secondary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <IconHeart size={28} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h2 className="headline-sm" style={{ fontSize: '19px', margin: 0 }}>I am a Caretaker</h2>
+              <p className="body-md" style={{ color: 'var(--outline)', fontSize: '14px', margin: '4px 0 0' }}>
+                Manage prescriptions, appointments, tracking &amp; cognitive reports.
+              </p>
+            </div>
+          </Card>
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: 24 }}>
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--outline)',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              padding: '8px 16px',
+            }}
+          >
+            ← Back to Welcome
+          </button>
+        </div>
       </div>
-
-      <Card onClick={() => handleSelectRole('patient')} style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer' }}>
-        <div style={{ padding: 14, borderRadius: 'var(--radius-pill)', backgroundColor: 'var(--mint-soft)', color: 'var(--primary)' }}>
-          <IconUser size={32} />
-        </div>
-        <div>
-          <h2 className="headline-sm">I am a Patient</h2>
-          <p className="body-md" style={{ color: 'var(--outline)' }}>Easy reminders, memory games & help.</p>
-        </div>
-      </Card>
-
-      <Card onClick={() => handleSelectRole('caretaker')} style={{ display: 'flex', alignItems: 'center', gap: 16, cursor: 'pointer' }}>
-        <div style={{ padding: 14, borderRadius: 'var(--radius-pill)', backgroundColor: '#fff3e0', color: 'var(--secondary)' }}>
-          <IconHeart size={32} />
-        </div>
-        <div>
-          <h2 className="headline-sm">I am a Caretaker</h2>
-          <p className="body-md" style={{ color: 'var(--outline)' }}>Manage care, tracking & routines.</p>
-        </div>
-      </Card>
     </div>
   );
 }

@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AppLayout from '@/components/layout/AppLayout';
 import TopBar from '@/components/layout/TopBar';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import { useAppData } from '@/hooks/useAppData';
 import { useAuth } from '@/context/AuthContext';
-import { getPatientByProfileId } from '@/services/patients';
+import { useToast } from '@/context/ToastContext';
 import { getGalleryImages } from '@/services/gallery';
 import { saveMemorySession } from '@/services/analytics';
 import {
@@ -27,10 +27,10 @@ function shuffleArray(arr) {
 
 export default function GameQuestionPage() {
   const navigate = useNavigate();
-  const { setAppData, showToast } = useAppData();
-  const { user, patientRecord } = useAuth();
+  const { patientRecord } = useAuth();
+  const { showToast } = useToast();
+  const patientId = patientRecord?.id;
 
-  const [patientId, setPatientId] = useState(patientRecord?.id || null);
   const [loading, setLoading] = useState(true);
   const [gamePhotos, setGamePhotos] = useState([]);
   const [allFamilyNames, setAllFamilyNames] = useState([]);
@@ -47,20 +47,12 @@ export default function GameQuestionPage() {
   const optionsRef = useRef([]);
   const handleSelectRef = useRef(null);
 
-  // 1. Resolve patient ID
+  // 1. Fetch real photos from Supabase Storage & gallery_images
   useEffect(() => {
-    if (patientRecord?.id) {
-      setPatientId(patientRecord.id);
-    } else if (user?.id) {
-      getPatientByProfileId(user.id).then(({ data }) => {
-        if (data?.id) setPatientId(data.id);
-      });
+    if (!patientId) {
+      setLoading(false);
+      return;
     }
-  }, [patientRecord?.id, user?.id]);
-
-  // 2. Fetch and randomly select up to 5 unique photos from Supabase Storage & gallery_images
-  useEffect(() => {
-    if (!patientId) return;
 
     let mounted = true;
     setLoading(true);
@@ -76,7 +68,7 @@ export default function GameQuestionPage() {
         if (validPhotos.length === 0) {
           setGamePhotos([]);
         } else {
-          // Unbiased random selection: Shuffle all and pick up to 5 unique photos
+          // Shuffle all and pick up to 5 unique photos
           const shuffled = shuffleArray(validPhotos);
           const selected = shuffled.slice(0, Math.min(shuffled.length, 5));
           setGamePhotos(selected);
@@ -105,7 +97,7 @@ export default function GameQuestionPage() {
   const currentPhoto = gamePhotos[currentRound - 1];
   const correctName = currentPhoto?.file_name || '';
 
-  // 3. Generate 4 options for current target photo
+  // 2. Generate 4 options for current target photo
   const options = useMemo(() => {
     if (!correctName) return [];
 
@@ -119,18 +111,18 @@ export default function GameQuestionPage() {
     return shuffleArray([correctName, ...selectedDistractors]);
   }, [correctName, allFamilyNames]);
 
-  // Keep fresh options in ref for speech recognition
+  // Keep fresh options in ref for speech recognition and keyboard navigation
   useEffect(() => {
     optionsRef.current = options;
   }, [options]);
 
-  // 4. Voice Speak Handler (SpeechSynthesis - Read Aloud)
+  // 3. Voice Speak Handler
   const handleSpeakQuestion = useCallback(() => {
     stopSpeech();
     speakText('Who is this person?');
   }, []);
 
-  // 5. Exit Game Handler (Cleans up Speech Recognition & Navigates Home)
+  // 4. Exit Game Handler
   const handleExitGame = () => {
     stopSpeech();
     if (recognitionRef.current) {
@@ -143,7 +135,7 @@ export default function GameQuestionPage() {
     navigate('/patient/home');
   };
 
-  // 6. Reset round-level voice state and abort prior recognition when round advances
+  // 5. Reset round-level voice state when round advances
   useEffect(() => {
     hasSubmittedRef.current = false;
     if (recognitionRef.current) {
@@ -156,7 +148,7 @@ export default function GameQuestionPage() {
     setVoiceMessage('');
   }, [currentRound]);
 
-  // 7. Handle Answer Selection & Cloud Persistence (The Answer Validator)
+  // 6. Handle Answer Selection & Cloud Persistence
   const handleSelect = useCallback(
     async (chosen) => {
       stopSpeech();
@@ -169,11 +161,7 @@ export default function GameQuestionPage() {
         recognitionRef.current = null;
       }
 
-      console.log('Sending transcript to answer validator:', chosen);
-
       const isCorrect = chosen.toLowerCase().trim() === correctName.toLowerCase().trim();
-      console.log('Answer registered. isCorrect:', isCorrect, '| Expected:', correctName, '| Given:', chosen);
-
       const newCorrect = isCorrect ? correctCount + 1 : correctCount;
       const newScore = isCorrect ? score + 10 : score;
 
@@ -219,43 +207,46 @@ export default function GameQuestionPage() {
           });
         }
 
-        setAppData((prev) => ({
-          ...prev,
-          analyticsReports: [report, ...(prev.analyticsReports || [])],
-          latestReport: report,
-          stats: {
-            ...prev.stats,
-            games: (prev.stats?.games || 0) + 1,
-            score: (prev.stats?.score || 0) + newScore,
-            correct: (prev.stats?.correct || 0) + newCorrect,
-          },
-        }));
-
-        navigate('/patient/games/result');
+        navigate('/patient/games/result', { state: { report } });
       }
     },
-    [correctName, correctCount, score, currentRound, sessionRounds, totalRounds, patientId, setAppData, navigate]
+    [correctName, correctCount, score, currentRound, sessionRounds, totalRounds, patientId, navigate]
   );
 
-  // Keep fresh handleSelect in ref for speech recognition
   useEffect(() => {
     handleSelectRef.current = handleSelect;
   }, [handleSelect]);
 
-  // 8. Patient-Friendly Speech Recognition Pipeline (Continuous + Interim streaming + Pause tolerance)
+  // 7. Keyboard Navigation (1, 2, 3, 4 keys)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (hasSubmittedRef.current) return;
+      const keyIndex = parseInt(e.key, 10) - 1;
+      if (keyIndex >= 0 && keyIndex < optionsRef.current.length) {
+        const chosen = optionsRef.current[keyIndex];
+        if (chosen && handleSelectRef.current) {
+          handleSelectRef.current(chosen);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // 8. Speech Recognition Pipeline
   const startVoiceRecognition = () => {
     stopSpeech();
 
     if (!isSpeechRecognitionSupported()) {
       setVoiceStatus('error');
-      setVoiceMessage('Speech recognition is not supported in this browser. Please use Chrome.');
+      setVoiceMessage('Speech recognition is not supported in this browser. Please use Google Chrome.');
       showToast('Speech recognition not supported in this browser.');
       return;
     }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-    // Abort any existing instance before creating a new one
     if (recognitionRef.current) {
       try {
         recognitionRef.current.abort();
@@ -265,14 +256,12 @@ export default function GameQuestionPage() {
 
     try {
       const recognition = new SpeechRecognition();
-      recognition.continuous = true; // Stay listening through natural speech pauses
-      recognition.interimResults = true; // Stream interim words in real-time
-      recognition.lang = 'en-IN'; // Indian English accent recognition
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-IN';
       recognition.maxAlternatives = 3;
 
-      // Attach all event handlers BEFORE recognition.start()
       recognition.onstart = () => {
-        console.log('Recognition started');
         setVoiceStatus('listening');
         setVoiceMessage("Listening... Speak person's name now");
       };
@@ -285,31 +274,23 @@ export default function GameQuestionPage() {
           if (!result || !result[0]) continue;
 
           if (!result.isFinal) {
-            // Live interim result (speaking in progress): show feedback without submitting
             const interimText = result[0].transcript.trim();
             if (interimText) {
               setVoiceStatus('listening');
               setVoiceMessage(`Hearing: "${interimText}"...`);
             }
           } else {
-            // Final utterance segment
-            console.log('Final result event received');
             const rawTranscript = result[0].transcript.trim();
-            console.log('Transcript received:', rawTranscript);
-
-            // Gather all alternatives for this final segment
             const allAlternatives = Array.from(result).map((alt) => alt.transcript.trim());
             const currentOptions = optionsRef.current;
             const matchedOption = matchTranscriptToOptions(allAlternatives, currentOptions);
 
             if (matchedOption) {
-              // Valid option match found!
               hasSubmittedRef.current = true;
               setVoiceStatus('heard');
               setVoiceMessage(`I heard: "${rawTranscript}" → "${matchedOption}"`);
               showToast(`I heard: "${matchedOption}"`);
 
-              // Clean up recognition
               try {
                 recognition.stop();
               } catch {}
@@ -319,71 +300,60 @@ export default function GameQuestionPage() {
               }
               break;
             } else {
-              // No option matched yet: show what was heard and keep listening for next utterance
               setVoiceStatus('listening');
               setVoiceMessage(`I heard: "${rawTranscript}". Keep speaking or choose an option.`);
-              console.log('No option matched for final transcript:', rawTranscript, '| Available options:', currentOptions);
             }
           }
         }
       };
 
       recognition.onerror = (event) => {
-        console.log('Recognition error:', event.error);
         if (hasSubmittedRef.current) return;
-
         if (event.error === 'not-allowed') {
           setVoiceStatus('error');
-          setVoiceMessage('Microphone permission denied. Please allow microphone access in Chrome settings.');
-          showToast('Microphone permission denied.');
+          setVoiceMessage('Microphone permission denied. Please allow microphone in browser settings.');
         } else if (event.error === 'no-speech') {
-          // Normal timeout after extended silence: allow user to tap Speak Answer again
           setVoiceStatus('idle');
           setVoiceMessage('No speech heard. Tap Speak Answer to try again.');
-        } else if (event.error === 'audio-capture') {
-          setVoiceStatus('error');
-          setVoiceMessage('No microphone detected on your device.');
-          showToast('Microphone unavailable.');
         } else {
           setVoiceStatus('idle');
-          setVoiceMessage(`Microphone session ended. Tap Speak Answer to try again.`);
+          setVoiceMessage('Microphone session ended. Tap Speak Answer to try again.');
         }
       };
 
       recognition.onend = () => {
-        console.log('Recognition ended');
         if (!hasSubmittedRef.current) {
           setVoiceStatus((prev) => (prev === 'listening' ? 'idle' : prev));
           setVoiceMessage((prev) => (prev.startsWith('Listening') ? 'Listening ended. Tap Speak Answer to try again.' : prev));
         }
       };
 
-      // Assign to ref then start
       recognitionRef.current = recognition;
       recognition.start();
-    } catch (err) {
-      console.warn('Could not start recognition:', err);
+    } catch {
       setVoiceStatus('error');
       setVoiceMessage('Could not start microphone. Please tap an option below.');
     }
   };
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+    <AppLayout mode="patient" showNav={false}>
       <TopBar
         title={totalRounds > 0 ? `Round ${currentRound} of ${totalRounds}` : 'Memory Challenge'}
         onBack={handleExitGame}
       />
 
-      <div style={{ flex: 1, padding: 'var(--gutter)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <div style={{ maxWidth: '600px', width: '100%', margin: '0 auto', padding: '16px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         {loading ? (
-          <Card style={{ width: '100%', textAlign: 'center', padding: 32, marginTop: 24 }}>
+          <Card style={{ width: '100%', textAlign: 'center', padding: '36px 20px', marginTop: 24 }}>
+            <div className="spinner" />
             <p className="body-md" style={{ color: 'var(--outline)' }}>
               Loading family photo challenge...
             </p>
           </Card>
         ) : totalRounds === 0 ? (
-          <Card style={{ width: '100%', textAlign: 'center', padding: 28, marginTop: 20 }}>
+          <Card className="empty-state-card" style={{ width: '100%', marginTop: 20 }}>
+            <div style={{ fontSize: 36, marginBottom: 10 }}>🖼️</div>
             <h3 className="headline-sm" style={{ marginBottom: 8 }}>No Family Photos Uploaded</h3>
             <p className="body-md" style={{ color: 'var(--outline)', marginBottom: 24, fontSize: 14 }}>
               Your memory game uses real family photos from your private cloud album. Please ask your caretaker to upload photos in the Family Photo Album first.
@@ -394,9 +364,9 @@ export default function GameQuestionPage() {
           </Card>
         ) : (
           <>
-            {/* Header Action Bar with Progress and Visible Exit Game Button */}
-            <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ flex: 1, height: 6, backgroundColor: 'var(--surface-container-high)', borderRadius: 3, overflow: 'hidden', marginRight: 12 }}>
+            {/* Header Action Bar with Progress and Exit Game Button */}
+            <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <div style={{ flex: 1, height: 8, backgroundColor: 'var(--surface-container-high)', borderRadius: 4, overflow: 'hidden', marginRight: 14 }}>
                 <div
                   style={{
                     width: `${(currentRound / totalRounds) * 100}%`,
@@ -412,38 +382,38 @@ export default function GameQuestionPage() {
                 onClick={handleExitGame}
                 style={{
                   background: 'none',
-                  border: '1px solid var(--outline)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '4px 10px',
-                  fontSize: '12px',
+                  border: '1.5px solid var(--outline-variant)',
+                  borderRadius: 'var(--radius-pill)',
+                  padding: '4px 12px',
+                  fontSize: '13px',
                   fontWeight: 600,
                   color: 'var(--outline)',
                   cursor: 'pointer',
                 }}
               >
-                ✕ Exit Game
+                ✕ Exit
               </button>
             </div>
 
-            {/* Real Family Photo Card */}
+            {/* Photo Card */}
             <Card style={{ width: '100%', overflow: 'hidden', padding: 0, marginBottom: 16 }}>
               <img
                 src={currentPhoto.url}
                 alt="Family member"
-                style={{ width: '100%', height: 230, objectFit: 'cover' }}
+                style={{ width: '100%', height: 'clamp(200px, 35vh, 320px)', objectFit: 'cover' }}
               />
             </Card>
 
-            <h3 className="headline-sm" style={{ marginBottom: 12, textAlign: 'center' }}>
+            <h3 className="headline-sm" style={{ marginBottom: 14, textAlign: 'center', fontSize: '20px' }}>
               Who is this person?
             </h3>
 
             {/* Speak / Voice Buttons */}
-            <div style={{ display: 'flex', gap: 10, width: '100%', marginBottom: 12 }}>
+            <div style={{ display: 'flex', gap: 12, width: '100%', marginBottom: 14 }}>
               <Button
                 variant="outline"
                 onClick={handleSpeakQuestion}
-                style={{ flex: 1, borderColor: 'var(--primary)', color: 'var(--primary)', padding: '10px 8px' }}
+                style={{ flex: 1, padding: '12px 14px' }}
               >
                 🔊 Read Aloud
               </Button>
@@ -453,7 +423,7 @@ export default function GameQuestionPage() {
                 disabled={voiceStatus === 'listening'}
                 style={{
                   flex: 1,
-                  padding: '10px 8px',
+                  padding: '12px 14px',
                   backgroundColor: voiceStatus === 'listening' ? '#c62828' : undefined,
                   color: voiceStatus === 'listening' ? '#fff' : undefined,
                 }}
@@ -462,13 +432,13 @@ export default function GameQuestionPage() {
               </Button>
             </div>
 
-            {/* Real-time Voice Recognition Feedback Banner */}
+            {/* Voice Feedback Banner */}
             {voiceMessage && (
               <div
                 style={{
                   width: '100%',
-                  padding: '8px 12px',
-                  borderRadius: 'var(--radius-sm)',
+                  padding: '10px 14px',
+                  borderRadius: 'var(--radius-md)',
                   backgroundColor:
                     voiceStatus === 'heard'
                       ? '#e8f5e9'
@@ -481,9 +451,9 @@ export default function GameQuestionPage() {
                       : voiceStatus === 'error'
                       ? 'var(--on-error-container)'
                       : 'var(--primary)',
-                  fontSize: '13px',
+                  fontSize: '14px',
                   fontWeight: 600,
-                  marginBottom: 14,
+                  marginBottom: 16,
                   textAlign: 'center',
                 }}
               >
@@ -491,27 +461,31 @@ export default function GameQuestionPage() {
               </div>
             )}
 
-            {/* Multiple Choice Option Buttons */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, width: '100%' }}>
-              {options.map((nameOpt) => (
+            {/* Option Buttons with Numbers */}
+            <div className="grid-responsive-2" style={{ width: '100%' }}>
+              {options.map((nameOpt, idx) => (
                 <Button
                   key={nameOpt}
                   variant="outline"
                   onClick={() => handleSelect(nameOpt)}
                   style={{
-                    padding: '16px 8px',
-                    fontSize: '17px',
+                    padding: '18px 14px',
+                    fontSize: '18px',
                     fontWeight: 700,
-                    borderColor: 'var(--primary)',
+                    width: '100%',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    gap: 8,
                   }}
                 >
-                  {nameOpt}
+                  <span style={{ opacity: 0.6, fontSize: 14 }}>{idx + 1}.</span>
+                  <span>{nameOpt}</span>
                 </Button>
               ))}
             </div>
           </>
         )}
       </div>
-    </div>
+    </AppLayout>
   );
 }

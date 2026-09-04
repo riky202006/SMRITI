@@ -1,33 +1,21 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
+import AppLayout from '@/components/layout/AppLayout';
 import TopBar from '@/components/layout/TopBar';
-import BottomNav from '@/components/layout/BottomNav';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import { useAppData } from '@/hooks/useAppData';
 import { useAuth } from '@/context/AuthContext';
+import { useToast } from '@/context/ToastContext';
 import { getAssignedPatients } from '@/services/patients';
-import {
-  getMedications,
-  addMedication as apiAddMedication,
-  updateMedication as apiUpdateMedication,
-  deleteMedication as apiDeleteMedication,
-  getMedicationLogs,
-  subscribeMedications,
-  subscribeMedicationLogs,
-} from '@/services/medications';
+import { useMedications } from '@/hooks/useMedications';
 import { formatTime } from '@/utils/formatters';
 import { IconMedication, IconCheck } from '@/components/icons';
 
 export default function MedicinePage() {
-  const { showToast } = useAppData();
   const { user } = useAuth();
+  const { showToast } = useToast();
 
   const [patient, setPatient] = useState(null);
   const [loadingPatient, setLoadingPatient] = useState(true);
-  const [medications, setMedications] = useState([]);
-  const [medLogs, setMedLogs] = useState([]);
-  const [loadingMeds, setLoadingMeds] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
 
   // Form states
   const [name, setName] = useState('');
@@ -42,8 +30,6 @@ export default function MedicinePage() {
   const [editDosage, setEditDosage] = useState('');
   const [editType, setEditType] = useState('Tablet');
   const [editTime, setEditTime] = useState('08:00');
-
-  const todayStr = new Date().toISOString().split('T')[0];
 
   // 1. Fetch assigned patient
   useEffect(() => {
@@ -65,56 +51,16 @@ export default function MedicinePage() {
 
   const patientId = patient?.patient_id;
 
-  // 2. Fetch medications and today's intake logs
-  const loadMedicationData = useCallback(() => {
-    if (!patientId) return;
-    setLoadingMeds(true);
-    setErrorMsg('');
-
-    Promise.all([
-      getMedications(patientId),
-      getMedicationLogs(patientId, todayStr, todayStr),
-    ])
-      .then(([medsRes, logsRes]) => {
-        if (medsRes.error) {
-          setErrorMsg(medsRes.error.message || 'Failed to load medications from Supabase.');
-        } else {
-          setMedications(medsRes.data || []);
-        }
-
-        if (logsRes.data) {
-          setMedLogs(logsRes.data || []);
-        }
-      })
-      .catch((err) => {
-        setErrorMsg(err.message || 'Network error loading medications.');
-      })
-      .finally(() => {
-        setLoadingMeds(false);
-      });
-  }, [patientId, todayStr]);
-
-  useEffect(() => {
-    loadMedicationData();
-  }, [loadMedicationData]);
-
-  // 3. Realtime subscriptions for medications & logs
-  useEffect(() => {
-    if (!patientId) return undefined;
-
-    const subMeds = subscribeMedications(patientId, () => {
-      loadMedicationData();
-    });
-
-    const subLogs = subscribeMedicationLogs(patientId, () => {
-      loadMedicationData();
-    });
-
-    return () => {
-      subMeds.unsubscribe();
-      subLogs.unsubscribe();
-    };
-  }, [patientId, loadMedicationData]);
+  const {
+    medications,
+    loading: loadingMeds,
+    error: medsError,
+    addMedication,
+    updateMedication,
+    deleteMedication,
+    getIntakeLog,
+    isTakenToday,
+  } = useMedications(patientId);
 
   // Handle Add Medication
   const handleAdd = async (e) => {
@@ -122,19 +68,16 @@ export default function MedicinePage() {
     if (!name.trim() || !dosage.trim() || !patientId) return;
 
     setSubmitting(true);
-    setErrorMsg('');
-
     try {
-      const { error } = await apiAddMedication(patientId, {
-        name,
-        dosage,
+      const { error } = await addMedication({
+        name: name.trim(),
+        dosage: dosage.trim(),
         type,
         frequency: 1,
         times: [time],
       });
 
       if (error) {
-        setErrorMsg(error.message || 'Failed to add medication to Supabase.');
         showToast('Error: ' + error.message);
         return;
       }
@@ -143,9 +86,6 @@ export default function MedicinePage() {
       setName('');
       setDosage('');
       setTime('08:00');
-      loadMedicationData();
-    } catch (err) {
-      setErrorMsg(err.message || 'An error occurred.');
     } finally {
       setSubmitting(false);
     }
@@ -166,7 +106,7 @@ export default function MedicinePage() {
 
     setSubmitting(true);
     try {
-      const { error } = await apiUpdateMedication(editingMedId, {
+      const { error } = await updateMedication(editingMedId, {
         name: editName.trim(),
         dosage: editDosage.trim(),
         type: editType,
@@ -180,9 +120,6 @@ export default function MedicinePage() {
 
       showToast('Medication updated successfully!');
       setEditingMedId(null);
-      loadMedicationData();
-    } catch (err) {
-      showToast('Error: ' + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -193,28 +130,24 @@ export default function MedicinePage() {
     if (!window.confirm(`Delete prescription for "${medName}"?`)) return;
 
     try {
-      const { error } = await apiDeleteMedication(medId);
+      const { error } = await deleteMedication(medId);
       if (error) {
         showToast('Failed to delete: ' + error.message);
         return;
       }
       showToast('Medication removed.');
-      loadMedicationData();
-    } catch (err) {
+    } catch {
       showToast('Error deleting medication.');
     }
   };
 
-  // Helper to check dose intake status
   const getDoseStatus = (medId, scheduledTime) => {
-    const formattedTime = scheduledTime.length === 5 ? `${scheduledTime}:00` : scheduledTime;
-    const log = medLogs.find(
-      (l) => l.medication_id === medId && (l.scheduled_time === formattedTime || l.scheduled_time === scheduledTime)
-    );
+    const isTaken = isTakenToday(medId, scheduledTime);
+    const log = getIntakeLog(medId, scheduledTime);
 
-    if (log && log.taken) {
+    if (isTaken) {
       let timeLabel = '';
-      if (log.taken_at) {
+      if (log?.taken_at) {
         try {
           const d = new Date(log.taken_at);
           timeLabel = ` at ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
@@ -226,244 +159,266 @@ export default function MedicinePage() {
   };
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+    <AppLayout mode="caretaker">
       <TopBar title="Medicine Schedule Setup" />
 
-      <div style={{ flex: 1, padding: 'var(--gutter)', overflowY: 'auto' }}>
+      <div style={{ marginTop: 8 }}>
         {loadingPatient ? (
-          <Card style={{ textAlign: 'center', padding: 20 }}>
+          <Card style={{ textAlign: 'center', padding: 24 }}>
+            <div className="spinner" />
             <p className="body-md" style={{ color: 'var(--outline)' }}>Loading patient details...</p>
           </Card>
         ) : !patient ? (
-          <Card style={{ textAlign: 'center', padding: 24, backgroundColor: '#fff3e0', border: '1px solid #ffb74d' }}>
-            <h3 className="headline-sm" style={{ color: '#e65100', marginBottom: 8 }}>
+          <Card className="empty-state-card" style={{ backgroundColor: '#fff3e0', borderColor: '#ffb74d' }}>
+            <h3 className="headline-sm" style={{ color: '#e65100', marginBottom: 6 }}>
               No Patient Connected
             </h3>
-            <p className="body-md" style={{ color: '#e65100', marginBottom: 16 }}>
+            <p className="body-md" style={{ color: '#e65100' }}>
               Please link a patient account from your Dashboard to manage their medication schedules.
             </p>
           </Card>
         ) : (
           <>
-            {/* Active Patient Card */}
-            <Card style={{ marginBottom: 16, backgroundColor: 'var(--mint-soft)', border: '1px solid var(--primary)' }}>
-              <p className="body-md" style={{ color: 'var(--primary)', fontSize: '13px' }}>Managing Prescriptions for:</p>
-              <h2 className="headline-sm" style={{ marginTop: 2 }}>
+            {/* Active Patient Indicator Banner */}
+            <Card style={{ marginBottom: 20, backgroundColor: 'var(--mint-soft)', border: '1.5px solid var(--primary)', padding: '16px 20px' }}>
+              <p className="body-md" style={{ color: 'var(--primary)', fontSize: '13px', margin: 0, fontWeight: 600 }}>MANAGING PRESCRIPTIONS FOR:</p>
+              <h2 className="headline-sm" style={{ marginTop: 2, fontSize: '20px' }}>
                 {patient.patient?.profiles?.full_name || 'Assigned Patient'}
               </h2>
             </Card>
 
-            {/* Error Message */}
-            {errorMsg && (
+            {medsError && (
               <div
                 style={{
-                  padding: '12px',
+                  padding: '12px 14px',
                   borderRadius: 'var(--radius-sm)',
                   backgroundColor: 'var(--error-container)',
                   color: 'var(--on-error-container)',
-                  fontSize: '13px',
+                  fontSize: '14px',
                   marginBottom: 16,
                 }}
               >
-                {errorMsg}
+                {medsError.message || 'Error communicating with Supabase.'}
               </div>
             )}
 
-            {/* Add Medication Form */}
-            <Card style={{ marginBottom: 20 }}>
-              <h3 className="headline-sm" style={{ marginBottom: 14 }}>Add Prescribed Medicine</h3>
-              <form onSubmit={handleAdd}>
-                <div style={{ marginBottom: 12 }}>
-                  <label className="label-lg" style={{ display: 'block', marginBottom: 4, fontSize: '13px' }}>Medicine Name</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Donepezil"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    style={{ width: '100%', padding: 12, borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--outline)', fontSize: '14px' }}
-                    required
-                  />
-                </div>
-
-                <div style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <label className="label-lg" style={{ display: 'block', marginBottom: 4, fontSize: '13px' }}>Dosage</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 5 mg"
-                      value={dosage}
-                      onChange={(e) => setDosage(e.target.value)}
-                      style={{ width: '100%', padding: 12, borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--outline)', fontSize: '14px' }}
-                      required
-                    />
-                  </div>
-
-                  <div style={{ flex: 1 }}>
-                    <label className="label-lg" style={{ display: 'block', marginBottom: 4, fontSize: '13px' }}>Form</label>
-                    <select
-                      value={type}
-                      onChange={(e) => setType(e.target.value)}
-                      style={{ width: '100%', padding: 12, borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--outline)', fontSize: '14px', backgroundColor: 'var(--surface)' }}
-                    >
-                      <option value="Tablet">Tablet</option>
-                      <option value="Capsule">Capsule</option>
-                      <option value="Syrup">Syrup</option>
-                      <option value="Drops">Drops</option>
-                      <option value="Injection">Injection</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: 16 }}>
-                  <label className="label-lg" style={{ display: 'block', marginBottom: 4, fontSize: '13px' }}>Scheduled Time</label>
-                  <input
-                    type="time"
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    style={{ width: '100%', padding: 12, borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--outline)', fontSize: '14px' }}
-                    required
-                  />
-                </div>
-
-                <Button type="submit" variant="primary" disabled={submitting} style={{ width: '100%' }}>
-                  {submitting ? 'Saving to Supabase...' : '+ Save Prescription to Cloud'}
-                </Button>
-              </form>
-            </Card>
-
-            {/* Edit Modal / Inline Edit */}
-            {editingMedId && (
-              <Card style={{ marginBottom: 20, border: '2px solid var(--secondary)', backgroundColor: 'var(--surface-container-lowest)' }}>
-                <h3 className="headline-sm" style={{ marginBottom: 14 }}>Edit Medication</h3>
-                <form onSubmit={handleUpdate}>
-                  <input
-                    type="text"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    style={{ width: '100%', padding: 10, borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--outline)', marginBottom: 10 }}
-                    required
-                  />
-                  <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
-                    <input
-                      type="text"
-                      value={editDosage}
-                      onChange={(e) => setEditDosage(e.target.value)}
-                      placeholder="Dosage"
-                      style={{ flex: 1, padding: 10, borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--outline)' }}
-                      required
-                    />
-                    <select
-                      value={editType}
-                      onChange={(e) => setEditType(e.target.value)}
-                      style={{ flex: 1, padding: 10, borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--outline)', backgroundColor: 'var(--surface)' }}
-                    >
-                      <option value="Tablet">Tablet</option>
-                      <option value="Capsule">Capsule</option>
-                      <option value="Syrup">Syrup</option>
-                      <option value="Drops">Drops</option>
-                      <option value="Injection">Injection</option>
-                    </select>
-                  </div>
-                  <input
-                    type="time"
-                    value={editTime}
-                    onChange={(e) => setEditTime(e.target.value)}
-                    style={{ width: '100%', padding: 10, borderRadius: 'var(--radius-sm)', border: '1.5px solid var(--outline)', marginBottom: 14 }}
-                    required
-                  />
-                  <div style={{ display: 'flex', gap: 10 }}>
-                    <Button type="submit" variant="primary" disabled={submitting} style={{ flex: 1 }}>
-                      {submitting ? 'Updating...' : 'Update Medication'}
-                    </Button>
-                    <Button type="button" variant="outline" onClick={() => setEditingMedId(null)} style={{ flex: 0.5 }}>
-                      Cancel
-                    </Button>
-                  </div>
-                </form>
-              </Card>
-            )}
-
-            <h3 className="label-lg" style={{ marginBottom: 12, color: 'var(--outline)' }}>
-              LIVE PRESCRIBED MEDICINES ({medications.length})
-            </h3>
-
-            {loadingMeds ? (
-              <Card style={{ textAlign: 'center', padding: 20 }}>
-                <p className="body-md" style={{ color: 'var(--outline)' }}>Synchronizing medications from Supabase...</p>
-              </Card>
-            ) : medications.length === 0 ? (
-              <Card style={{ textAlign: 'center', padding: 24 }}>
-                <p className="body-md" style={{ color: 'var(--outline)' }}>No medicines scheduled yet for this patient.</p>
-              </Card>
-            ) : (
-              medications.map((m) => {
-                const primaryTime = m.times?.[0] || '08:00';
-                const status = getDoseStatus(m.id, primaryTime);
-
-                return (
-                  <Card key={m.id} style={{ marginBottom: 14 }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ padding: 8, borderRadius: 'var(--radius-pill)', backgroundColor: 'var(--mint-soft)', color: 'var(--primary)' }}>
-                          <IconMedication size={22} />
+            {/* Responsive 2-Column Grid on Tablet/Desktop */}
+            <div className="grid-responsive-2" style={{ alignItems: 'start' }}>
+              {/* Left Column: Add / Edit Form */}
+              <div>
+                {editingMedId ? (
+                  <Card style={{ border: '2px solid var(--secondary)', backgroundColor: 'var(--surface-container-lowest)', padding: '24px' }}>
+                    <h3 className="headline-sm" style={{ marginBottom: 16, fontSize: '18px' }}>Edit Medication</h3>
+                    <form onSubmit={handleUpdate} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      <div className="form-group">
+                        <label className="form-label">Medicine Name</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div style={{ display: 'flex', gap: 12 }}>
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label className="form-label">Dosage</label>
+                          <input
+                            type="text"
+                            className="form-input"
+                            value={editDosage}
+                            onChange={(e) => setEditDosage(e.target.value)}
+                            placeholder="Dosage"
+                            required
+                          />
                         </div>
-                        <div>
-                          <h4 className="headline-sm" style={{ fontSize: 17 }}>{m.name}</h4>
-                          <p className="body-md" style={{ color: 'var(--outline)', fontSize: 13 }}>
-                            {m.dosage} • {m.type || 'Tablet'}
-                          </p>
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label className="form-label">Form</label>
+                          <select
+                            value={editType}
+                            onChange={(e) => setEditType(e.target.value)}
+                            className="form-select"
+                          >
+                            <option value="Tablet">Tablet</option>
+                            <option value="Capsule">Capsule</option>
+                            <option value="Syrup">Syrup</option>
+                            <option value="Drops">Drops</option>
+                            <option value="Injection">Injection</option>
+                          </select>
                         </div>
                       </div>
-
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button
-                          type="button"
-                          onClick={() => startEdit(m)}
-                          style={{ background: 'none', border: '1px solid var(--outline)', borderRadius: 4, padding: '4px 8px', fontSize: 12, cursor: 'pointer' }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(m.id, m.name)}
-                          style={{ background: 'none', border: '1px solid var(--error)', color: 'var(--error)', borderRadius: 4, padding: '4px 8px', fontSize: 12, cursor: 'pointer' }}
-                        >
-                          Delete
-                        </button>
+                      <div className="form-group">
+                        <label className="form-label">Scheduled Time</label>
+                        <input
+                          type="time"
+                          className="form-input"
+                          value={editTime}
+                          onChange={(e) => setEditTime(e.target.value)}
+                          required
+                        />
                       </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--outline-variant)' }}>
-                      <span style={{ fontSize: 13, fontWeight: 700 }}>
-                        ⏰ {formatTime(primaryTime)}
-                      </span>
-
-                      <span
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 700,
-                          color: status.taken ? '#2e7d32' : '#e65100',
-                          backgroundColor: status.taken ? '#e8f5e9' : '#fff3e0',
-                          padding: '3px 8px',
-                          borderRadius: 'var(--radius-sm)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                        }}
-                      >
-                        {status.taken && <IconCheck size={14} />}
-                        {status.text}
-                      </span>
-                    </div>
+                      <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
+                        <Button type="submit" variant="primary" disabled={submitting} style={{ flex: 1 }}>
+                          {submitting ? 'Updating...' : 'Update Medication'}
+                        </Button>
+                        <Button type="button" variant="outline" onClick={() => setEditingMedId(null)} style={{ flex: 0.4 }}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </form>
                   </Card>
-                );
-              })
-            )}
+                ) : (
+                  <Card style={{ padding: '24px' }}>
+                    <h3 className="headline-sm" style={{ marginBottom: 16, fontSize: '18px' }}>Add Prescribed Medicine</h3>
+                    <form onSubmit={handleAdd} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      <div className="form-group">
+                        <label className="form-label">Medicine Name</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="e.g. Donepezil"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 12 }}>
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label className="form-label">Dosage</label>
+                          <input
+                            type="text"
+                            className="form-input"
+                            placeholder="e.g. 5 mg"
+                            value={dosage}
+                            onChange={(e) => setDosage(e.target.value)}
+                            required
+                          />
+                        </div>
+
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label className="form-label">Form</label>
+                          <select
+                            value={type}
+                            onChange={(e) => setType(e.target.value)}
+                            className="form-select"
+                          >
+                            <option value="Tablet">Tablet</option>
+                            <option value="Capsule">Capsule</option>
+                            <option value="Syrup">Syrup</option>
+                            <option value="Drops">Drops</option>
+                            <option value="Injection">Injection</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">Scheduled Daily Time</label>
+                        <input
+                          type="time"
+                          className="form-input"
+                          value={time}
+                          onChange={(e) => setTime(e.target.value)}
+                          required
+                        />
+                      </div>
+
+                      <Button type="submit" variant="primary" disabled={submitting} style={{ width: '100%', marginTop: 6 }}>
+                        {submitting ? 'Saving to Cloud...' : '+ Save Prescription to Cloud'}
+                      </Button>
+                    </form>
+                  </Card>
+                )}
+              </div>
+
+              {/* Right Column: Prescribed Medications List & Intake Monitoring */}
+              <div>
+                <h3 className="label-lg" style={{ marginBottom: 14, color: 'var(--outline)', letterSpacing: '0.5px' }}>
+                  SCHEDULED MEDICATIONS ({medications.length})
+                </h3>
+
+                {loadingMeds ? (
+                  <Card style={{ textAlign: 'center', padding: 24 }}>
+                    <div className="spinner" />
+                    <p className="body-md" style={{ color: 'var(--outline)' }}>Synchronizing cloud prescriptions...</p>
+                  </Card>
+                ) : medications.length === 0 ? (
+                  <Card className="empty-state-card">
+                    <div style={{ fontSize: 32, marginBottom: 8 }}>💊</div>
+                    <h4 style={{ fontSize: 17, fontWeight: 700 }}>No Prescriptions Added</h4>
+                    <p>Use the form to schedule daily medications for this patient.</p>
+                  </Card>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {medications.map((m) => {
+                      const primaryTime = m.times?.[0] || '08:00';
+                      const status = getDoseStatus(m.id, primaryTime);
+
+                      return (
+                        <Card key={m.id} style={{ padding: '18px 20px' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                              <div style={{ padding: 10, borderRadius: 'var(--radius-pill)', backgroundColor: 'var(--mint-soft)', color: 'var(--primary)' }}>
+                                <IconMedication size={24} />
+                              </div>
+                              <div>
+                                <h4 className="headline-sm" style={{ fontSize: 17, margin: 0 }}>{m.name}</h4>
+                                <p className="body-md" style={{ color: 'var(--outline)', fontSize: 13, margin: '2px 0 0' }}>
+                                  {m.dosage} • {m.type || 'Tablet'}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button
+                                type="button"
+                                onClick={() => startEdit(m)}
+                                className="btn btn-sm btn-outline"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(m.id, m.name)}
+                                className="btn btn-sm btn-danger"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 12, paddingTop: 10, borderTop: '1px solid var(--surface-container)' }}>
+                            <span style={{ fontSize: 14, fontWeight: 700 }}>
+                              ⏰ {formatTime(primaryTime)}
+                            </span>
+
+                            <span
+                              style={{
+                                fontSize: 12,
+                                fontWeight: 700,
+                                color: status.taken ? '#2e7d32' : '#e65100',
+                                backgroundColor: status.taken ? '#e8f5e9' : '#fff3e0',
+                                padding: '4px 10px',
+                                borderRadius: 'var(--radius-pill)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 4,
+                              }}
+                            >
+                              {status.taken && <IconCheck size={14} />}
+                              {status.text}
+                            </span>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
           </>
         )}
       </div>
-
-      <BottomNav mode="caretaker" />
-    </div>
+    </AppLayout>
   );
 }

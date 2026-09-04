@@ -191,3 +191,40 @@ export async function unlinkPatientFromCaretaker({ caretakerId, patientId }) {
 
   return { error };
 }
+
+/**
+ * Get patient settings / preferences.
+ */
+export async function getPatientSettings(patientId) {
+  if (!isSupabaseConfigured || !patientId) return { data: null, error: null };
+
+  const { data, error } = await supabase
+    .from('patient_settings')
+    .select('*')
+    .eq('patient_id', patientId)
+    .maybeSingle();
+
+  return { data, error };
+}
+
+/**
+ * Upsert patient settings / preferences.
+ */
+export async function updatePatientSettings(patientId, settings) {
+  if (!isSupabaseConfigured || !patientId) return { data: null, error: null };
+
+  const { data, error } = await supabase
+    .from('patient_settings')
+    .upsert(
+      {
+        patient_id: patientId,
+        ...settings,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'patient_id' }
+    )
+    .select()
+    .single();
+
+  return { data, error };
+}
