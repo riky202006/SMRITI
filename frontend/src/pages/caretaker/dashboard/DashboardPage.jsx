@@ -81,7 +81,7 @@ export default function DashboardPage() {
       <TopBar title="Caretaker Hub" showBack={false} />
 
       <div style={{ marginTop: 8 }}>
-        {/* Caregiver Status Banner */}
+        
 {/* Caregiver Status Banner */}
 <Card
   style={{

@@ -5,42 +5,48 @@ import { supabase, isSupabaseConfigured } from './supabase';
  */
 export async function triggerSosAlert({ patientId, latitude = null, longitude = null }) {
   if (!isSupabaseConfigured || !patientId) {
-    return { data: null, error: new Error('Supabase is not configured or patient ID is missing.') };
+    return { data: null, error: new Error('Unable to send SOS. Please try again.') };
   }
 
-  // Prevent duplicate spam if an active alert was created in the last 15 seconds
-  const fifteenSecsAgo = new Date(Date.now() - 15000).toISOString();
-  const { data: recentAlerts } = await supabase
-    .from('sos_alerts')
-    .select('id, status, triggered_at')
-    .eq('patient_id', patientId)
-    .eq('status', 'active')
-    .gte('triggered_at', fifteenSecsAgo)
-    .limit(1);
+  // Strictly invoke Supabase Edge Function (trigger-sos) which validates, saves alert, and pushes notifications
+  try {
+    const { data: funcData, error: funcError } = await supabase.functions.invoke('trigger-sos', {
+      body: {
+        patientId,
+        latitude: latitude != null ? Number(latitude) : null,
+        longitude: longitude != null ? Number(longitude) : null,
+      },
+    });
 
-  if (recentAlerts && recentAlerts.length > 0) {
+    if (funcError) {
+      console.error('[triggerSosAlert] Edge function error:', funcError);
+      return {
+        data: null,
+        error: new Error('Unable to send SOS. Please try again.'),
+      };
+    }
+
+    if (!funcData || funcData.error) {
+      console.error('[triggerSosAlert] Edge function returned error:', funcData?.error);
+      return {
+        data: null,
+        error: new Error(funcData?.error || 'Unable to send SOS. Please try again.'),
+      };
+    }
+
     return {
-      data: recentAlerts[0],
+      data: funcData.alert,
+      alreadyActive: funcData.alreadyActive || false,
+      pushStats: funcData.pushStats,
       error: null,
-      alreadyActive: true,
+    };
+  } catch (err) {
+    console.error('[triggerSosAlert] Exception invoking trigger-sos Edge Function:', err);
+    return {
+      data: null,
+      error: new Error('Unable to send SOS. Please try again.'),
     };
   }
-
-  const { data, error } = await supabase
-    .from('sos_alerts')
-    .insert([
-      {
-        patient_id: patientId,
-        status: 'active',
-        latitude: latitude || null,
-        longitude: longitude || null,
-        triggered_at: new Date().toISOString(),
-      },
-    ])
-    .select()
-    .single();
-
-  return { data, error };
 }
 
 /**
@@ -139,8 +145,9 @@ export async function getSosHistory(patientId, limit = 10) {
 export function subscribeToSosAlerts(patientId, callback) {
   if (!isSupabaseConfigured || !patientId) return { unsubscribe: () => {} };
 
+  const channelName = `sos_alerts_${patientId}_${Date.now()}`;
   const channel = supabase
-    .channel(`sos_alerts:${patientId}`)
+    .channel(channelName)
     .on(
       'postgres_changes',
       {
@@ -149,13 +156,25 @@ export function subscribeToSosAlerts(patientId, callback) {
         table: 'sos_alerts',
         filter: `patient_id=eq.${patientId}`,
       },
-      (payload) => callback(payload)
+      (payload) => {
+        if (typeof callback === 'function') {
+          callback(payload);
+        }
+      }
     )
-    .subscribe();
+    .subscribe((status, err) => {
+      if (err) {
+        console.warn(`[Realtime SOS] Subscription warning for patient ${patientId}:`, err);
+      }
+    });
 
   return {
     unsubscribe: () => {
-      supabase.removeChannel(channel);
+      try {
+        supabase.removeChannel(channel);
+      } catch (err) {
+        console.warn('[Realtime SOS] Error removing channel:', err);
+      }
     },
   };
 }

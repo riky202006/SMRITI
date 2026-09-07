@@ -1,22 +1,36 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AppLayout from '@/components/layout/AppLayout';
 import TopBar from '@/components/layout/TopBar';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import LiveTrackingMap from '@/pages/patient/sos/components/LiveTrackingMap';
 import { useToast } from '@/context/ToastContext';
+import { useAuth } from '@/context/AuthContext';
 import { useCaretaker } from '@/context/CaretakerContext';
 import { useSos } from '@/hooks/useSos';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { sosAlarm } from '@/utils/sosAlarm';
 import { IconSos, IconCheck } from '@/components/icons';
 
 export default function SosPage() {
+  const { user } = useAuth();
   const { showToast } = useToast();
   const { activePatient: patient, loadingPatients: loadingPatient } = useCaretaker();
 
   const [processingId, setProcessingId] = useState(null);
+  const [alarmStatus, setAlarmStatus] = useState({ isPlaying: false, isAutoplayBlocked: false });
 
   const patientId = patient?.patient_id;
   const patientName = patient?.patient?.profiles?.full_name || 'Assigned Patient';
+
+  // Push notifications state on this caregiver device
+  const {
+    isSupported: pushSupported,
+    isSubscribed: pushSubscribed,
+    loading: pushLoading,
+    subscribe: subscribePush,
+    unsubscribe: unsubscribePush,
+  } = usePushNotifications(user?.id);
 
   const {
     activeAlerts,
@@ -29,6 +43,42 @@ export default function SosPage() {
     acknowledgeSos,
     resolveSos,
   } = useSos(patientId);
+
+  // Subscribe to alarm state changes (e.g. autoplay blocked detection)
+  useEffect(() => {
+    const unsub = sosAlarm.subscribe((status) => {
+      setAlarmStatus(status);
+    });
+    return () => unsub();
+  }, []);
+
+  // Control Audible Alarm: Start on active emergency, stop immediately on acknowledge/resolve/unmount
+  useEffect(() => {
+    if (isEmergency) {
+      sosAlarm.start();
+    } else {
+      sosAlarm.stop();
+    }
+
+    return () => {
+      sosAlarm.stop();
+    };
+  }, [isEmergency]);
+
+  const handleTogglePush = async () => {
+    if (pushSubscribed) {
+      const res = await unsubscribePush();
+      if (res.success) showToast('Push notifications disabled on this device.');
+      else showToast('Failed to disable: ' + res.error?.message);
+    } else {
+      const res = await subscribePush();
+      if (res.success) {
+        showToast('✓ Real-time SOS Push Notifications enabled on this device!');
+      } else {
+        showToast('⚠️ Push registration failed: ' + (res.error?.message || 'Check browser permissions'));
+      }
+    }
+  };
 
   // 4. Handle Caretaker Acknowledgement
   const handleAcknowledge = async (alertId) => {
@@ -60,9 +110,31 @@ export default function SosPage() {
     }
   };
 
+  const handleTestAlarm = async () => {
+    if (alarmStatus.isPlaying) {
+      sosAlarm.stop();
+      showToast('🔊 Alarm stopped.');
+    } else {
+      showToast('🚨 Playing Emergency Alarm Test...');
+      await sosAlarm.enableAudioByUser();
+    }
+  };
+
   return (
     <AppLayout mode="caretaker">
-      <TopBar title="Emergency SOS Monitor" />
+      <TopBar
+        title="Emergency SOS Monitor"
+        rightAction={
+          <Button
+            variant={alarmStatus.isPlaying ? 'danger' : 'outline'}
+            onClick={handleTestAlarm}
+            style={{ fontSize: '12px', padding: '4px 10px', minHeight: '32px' }}
+            title="Test the audible emergency siren on this device"
+          >
+            {alarmStatus.isPlaying ? '⏹ Stop Alarm' : '🔊 Test Alarm'}
+          </Button>
+        }
+      />
 
       <div style={{ marginTop: 8 }}>
         {loadingPatient ? (
@@ -92,6 +164,51 @@ export default function SosPage() {
               >
                 {sosError.message || 'Error communicating with SOS service.'}
               </div>
+            )}
+
+            {/* Push Notification Setup & Status Card */}
+            {pushSupported && (
+              <Card
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: 12,
+                  padding: '14px 18px',
+                  marginBottom: 16,
+                  backgroundColor: pushSubscribed ? 'var(--mint-soft)' : '#fff8e1',
+                  border: `1px solid ${pushSubscribed ? 'var(--primary)' : '#ffe082'}`,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: '24px' }}>{pushSubscribed ? '🔔' : '🔕'}</span>
+                  <div>
+                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 700, color: pushSubscribed ? 'var(--primary)' : '#e65100' }}>
+                      {pushSubscribed
+                        ? 'Instant Emergency Push Alerts Active'
+                        : 'Enable Instant Push Notifications on this Device'}
+                    </h4>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--outline)' }}>
+                      {pushSubscribed
+                        ? 'This device will receive loud SOS notifications even when this browser tab is closed.'
+                        : 'Grant permission to get immediate OS/browser alerts the moment your patient triggers SOS.'}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant={pushSubscribed ? 'outline' : 'primary'}
+                  onClick={handleTogglePush}
+                  disabled={pushLoading}
+                  style={{ fontSize: '13px', padding: '6px 14px' }}
+                >
+                  {pushLoading
+                    ? 'Updating...'
+                    : pushSubscribed
+                    ? 'Disable on this Device'
+                    : 'Enable Push Alerts'}
+                </Button>
+              </Card>
             )}
 
             <div className="grid-responsive-2" style={{ alignItems: 'start' }}>
@@ -169,6 +286,35 @@ export default function SosPage() {
                       ? `You acknowledged this alert at ${new Date(currentActive.acknowledged_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Response in progress.`
                       : `Currently monitoring ${patientName}. No active distress signals.`}
                   </p>
+
+                  {/* Autoplay blocked fallback audio button */}
+                  {isEmergency && alarmStatus.isAutoplayBlocked && (
+                    <div
+                      style={{
+                        marginTop: 14,
+                        padding: '10px 14px',
+                        borderRadius: 'var(--radius-sm)',
+                        backgroundColor: '#fff',
+                        border: '2px solid var(--error)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: 10,
+                      }}
+                    >
+                      <span style={{ fontSize: '14px', fontWeight: 800, color: 'var(--error)' }}>
+                        🔊 Click to enable emergency alarm
+                      </span>
+                      <Button
+                        variant="danger"
+                        onClick={() => sosAlarm.enableAudioByUser()}
+                        style={{ fontSize: '12px', padding: '6px 14px' }}
+                      >
+                        Start Alarm Sound
+                      </Button>
+                    </div>
+                  )}
 
                   {/* Actions */}
                   {isEmergency && (

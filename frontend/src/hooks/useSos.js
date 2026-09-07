@@ -54,7 +54,30 @@ export function useSos(patientId) {
   useEffect(() => {
     if (!patientId) return undefined;
 
-    const sub = subscribeToSosAlerts(patientId, () => {
+    const sub = subscribeToSosAlerts(patientId, (payload) => {
+      const { eventType, new: newRow, old: oldRow } = payload || {};
+
+      // 1. Immediate React state update for instant UI feedback without waiting for fetch
+      if (eventType === 'INSERT' && newRow) {
+        if (newRow.status === 'active' || newRow.status === 'acknowledged') {
+          setActiveAlerts((prev) => [newRow, ...prev.filter((a) => a.id !== newRow.id)]);
+        }
+        setHistory((prev) => [newRow, ...prev.filter((a) => a.id !== newRow.id)]);
+      } else if (eventType === 'UPDATE' && newRow) {
+        if (newRow.status === 'resolved') {
+          setActiveAlerts((prev) => prev.filter((a) => a.id !== newRow.id));
+        } else {
+          setActiveAlerts((prev) => [newRow, ...prev.filter((a) => a.id !== newRow.id)]);
+        }
+        setHistory((prev) =>
+          prev.map((item) => (item.id === newRow.id ? newRow : item))
+        );
+      } else if (eventType === 'DELETE' && oldRow) {
+        setActiveAlerts((prev) => prev.filter((a) => a.id !== oldRow.id));
+        setHistory((prev) => prev.filter((a) => a.id !== oldRow.id));
+      }
+
+      // 2. Fetch full sync to guarantee consistency
       refresh();
     });
 

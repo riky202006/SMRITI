@@ -63,3 +63,5 @@ frontend/supabase/.temp/
 
 # Supabase local temporary files
 frontend/supabase/.temp/
+
+supabase/.temp/

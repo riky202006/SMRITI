@@ -73,7 +73,7 @@ export default function SosPage() {
       const { error, alreadyActive } = await triggerSos(coords);
 
       if (error) {
-        showToast('⚠️ SOS Transmission Failed: ' + error.message);
+        showToast(error.message || 'Unable to send SOS. Please try again.');
       } else if (alreadyActive) {
         showToast('Active distress signal is already broadcasting.');
       } else {
